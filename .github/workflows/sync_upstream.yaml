@@ -1,0 +1,59 @@
+name: sync_upstream_mihomo_script
+
+on:
+  schedule:
+    # 每天北京时间 09:17 检查上游脚本
+    - cron: '17 1 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-upstream-mihomo-script
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: generate customized script from upstream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/sync-upstream.mjs
+
+      - name: verify generated script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node --check Script/mihomoScript.js
+          node --check scripts/sync-upstream.mjs
+          node Test/test-customized-script.mjs
+          node scripts/sync-upstream.mjs --check
+          git diff --check
+
+      - name: commit upstream update
+        run: |
+          git add Script/mihomoScript.js .upstream/mihomoScript.sha
+
+          if git diff --cached --quiet; then
+            echo "No upstream script changes"
+            exit 0
+          fi
+
+          upstream_sha="$(tr -d '\r\n' < .upstream/mihomoScript.sha)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(sync): update mihomoScript from ${upstream_sha:0:7}"
+          git push origin HEAD:main
