@@ -9,12 +9,32 @@
 
 根据所用客户端和上游脚本偏好任选其一：
 
+### mihomoScript.js
+
+GitHub Raw 地址：
+
 ```text
 https://raw.githubusercontent.com/SaiyoujiYuyuko/MyClash-CustomRules/main/Script/mihomoScript.js
 ```
 
+jsDelivr 加速地址：
+
+```text
+https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/Script/mihomoScript.js
+```
+
+### sing-mix.js
+
+GitHub Raw 地址：
+
 ```text
 https://raw.githubusercontent.com/SaiyoujiYuyuko/MyClash-CustomRules/main/Script/sing-mix.js
+```
+
+jsDelivr 加速地址：
+
+```text
+https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/Script/sing-mix.js
 ```
 
 ## 定制内容
