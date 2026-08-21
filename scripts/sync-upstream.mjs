@@ -2,12 +2,29 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const UPSTREAM_REPOSITORY = 'AIsouler/MyClash';
-const UPSTREAM_BRANCH = 'main';
-const UPSTREAM_SCRIPT_PATH = 'Script/mihomoScript.js';
-const DEFAULT_OUTPUT_PATH = UPSTREAM_SCRIPT_PATH;
-const DEFAULT_STATE_PATH = '.upstream/mihomoScript.sha';
 const CUSTOMIZATION_MARKER = 'CustomRules 自动同步定制';
+const SING_MIX_CUSTOMIZATION_MARKER = 'CustomRules 自动同步定制（sing-mix）';
+
+const TARGETS = {
+  mihomo: {
+    name: 'AIsouler/MyClash mihomoScript',
+    repository: 'AIsouler/MyClash',
+    branch: 'main',
+    upstreamPath: 'Script/mihomoScript.js',
+    outputPath: 'Script/mihomoScript.js',
+    statePath: '.upstream/mihomoScript.sha',
+    customize: customizeScript,
+  },
+  'sing-mix': {
+    name: 'Sakyvo/sing-mix',
+    repository: 'Sakyvo/sing-mix',
+    branch: 'main',
+    upstreamPath: 'sing-mix_origin',
+    outputPath: 'Script/sing-mix.js',
+    statePath: '.upstream/sing-mix.sha',
+    customize: customizeSingMixScript,
+  },
+};
 
 function replaceOnce(source, anchor, replacement, label) {
   const firstIndex = source.indexOf(anchor);
@@ -155,11 +172,206 @@ export function customizeScript(upstreamSource) {
   return source.endsWith('\n') ? source : `${source}\n`;
 }
 
+export function customizeSingMixScript(upstreamSource) {
+  let source = upstreamSource.replace(/\r\n?/g, '\n');
+
+  if (source.includes(SING_MIX_CUSTOMIZATION_MARKER)) {
+    throw new Error('输入文件已经包含 sing-mix 自定义修改，必须使用未修改的上游脚本作为输入');
+  }
+
+  const providersAnchor = '  return providers;\n};';
+  source = replaceOnce(
+    source,
+    providersAnchor,
+    `  // --- ${SING_MIX_CUSTOMIZATION_MARKER}：classical YAML 规则集 ---\n` +
+      '  const customRuleProviderBase = {\n' +
+      '    type: "http",\n' +
+      '    behavior: "classical",\n' +
+      '    format: "yaml",\n' +
+      '    interval: 86400\n' +
+      '  };\n\n' +
+      '  providers.custom_direct = {\n' +
+      '    ...customRuleProviderBase,\n' +
+      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/direct.yaml",\n' +
+      '    path: "./rules/custom_direct.yaml"\n' +
+      '  };\n' +
+      '  providers.custom_proxy = {\n' +
+      '    ...customRuleProviderBase,\n' +
+      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/proxy.yaml",\n' +
+      '    path: "./rules/custom_proxy.yaml"\n' +
+      '  };\n' +
+      '  providers.custom_jp = {\n' +
+      '    ...customRuleProviderBase,\n' +
+      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/JP.yaml",\n' +
+      '    path: "./rules/custom_jp.yaml"\n' +
+      '  };\n' +
+      '  providers.custom_nojp = {\n' +
+      '    ...customRuleProviderBase,\n' +
+      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/NoJP.yaml",\n' +
+      '    path: "./rules/custom_nojp.yaml"\n' +
+      '  };\n\n' +
+      providersAnchor,
+    'sing-mix buildRuleProviders 返回值',
+  );
+
+  const rulesAnchor = 'const STATIC_RULES = [\n';
+  source = replaceOnce(
+    source,
+    rulesAnchor,
+    `${rulesAnchor}  // --- ${SING_MIX_CUSTOMIZATION_MARKER}：高优先级规则 ---\n` +
+      '  "RULE-SET,custom_direct,DIRECT",\n' +
+      '  "RULE-SET,custom_jp,JP",\n' +
+      '  "RULE-SET,custom_nojp,非日本",\n' +
+      '  "RULE-SET,custom_proxy,main",\n\n',
+    'sing-mix STATIC_RULES',
+  );
+
+  const proxyGroupsSignatureAnchor =
+    'const buildProxyGroups = ({\n' +
+    '  allNames,\n' +
+    '  allAiNames,\n' +
+    '  activeRegionMap,\n' +
+    '  activeRegionNameSet,\n' +
+    '  otherProxyNames,\n' +
+    '  infoNames\n' +
+    '}) => {';
+  source = replaceOnce(
+    source,
+    proxyGroupsSignatureAnchor,
+    'const buildProxyGroups = ({\n' +
+      '  allNames,\n' +
+      '  allAiNames,\n' +
+      '  activeRegionMap,\n' +
+      '  activeRegionNameSet,\n' +
+      '  nonJapanNames,\n' +
+      '  otherProxyNames,\n' +
+      '  infoNames\n' +
+      '}) => {',
+    'sing-mix buildProxyGroups 参数',
+  );
+
+  const mainGroupAnchor =
+    '    const mainEntries = ["All", ...regionEntries];\n' +
+    '    if (otherProxyNames.length) mainEntries.push("Other");';
+  source = replaceOnce(
+    source,
+    mainGroupAnchor,
+    '    const mainEntries = ["All", ...regionEntries];\n' +
+      '    if (nonJapanNames.length) mainEntries.push("非日本");\n' +
+      '    if (otherProxyNames.length) mainEntries.push("Other");',
+    'sing-mix main 组',
+  );
+
+  const customGroupsAnchor = '  // Other 组\n';
+  source = replaceOnce(
+    source,
+    customGroupsAnchor,
+    `  // --- ${SING_MIX_CUSTOMIZATION_MARKER}：稳定的固定规则目标 ---\n` +
+      '  if (!groups.some((group) => group.name === "main")) {\n' +
+      '    add("main", "select", ["REJECT"], "Available.png");\n' +
+      '  }\n' +
+      '  if (!groups.some((group) => group.name === "ai")) {\n' +
+      '    add("ai", "select", ["REJECT"], "ChatGPT.png");\n' +
+      '  }\n' +
+      '  if (!groups.some((group) => group.name === "tg")) {\n' +
+      '    add("tg", "select", ["REJECT"], "Telegram.png");\n' +
+      '  }\n\n' +
+      '  if (!activeRegionNameSet.has("JP")) {\n' +
+      '    add("JP", "select", ["REJECT"], "Japan.png");\n' +
+      '  }\n\n' +
+      '  if (nonJapanNames.length) {\n' +
+      '    add("URL Test - 非日本", "url-test", nonJapanNames, "World_Map.png", SETTINGS.URL_TEST_EXTRA);\n' +
+      '    add("非日本", "select", ["URL Test - 非日本", ...nonJapanNames], "World_Map.png");\n' +
+      '  } else {\n' +
+      '    add("非日本", "select", ["REJECT"], "World_Map.png");\n' +
+      '  }\n\n' +
+      customGroupsAnchor,
+    'sing-mix 自定义地区组',
+  );
+
+  const globalGroupAnchor = '      ...regionEntries,\n' + '      ...(otherProxyNames.length ? ["Other"] : []),';
+  source = replaceOnce(
+    source,
+    globalGroupAnchor,
+    '      ...regionEntries,\n' +
+      '      ...(nonJapanNames.length ? ["非日本"] : []),\n' +
+      '      ...(otherProxyNames.length ? ["Other"] : []),',
+    'sing-mix GLOBAL 组',
+  );
+
+  const nonJapanNamesAnchor = '    const allAiNames = buildAllAiProxyList(activeRegions, otherProxyNames, allNames);';
+  source = replaceOnce(
+    source,
+    nonJapanNamesAnchor,
+    `    // --- ${SING_MIX_CUSTOMIZATION_MARKER}：JP 实际分组的严格补集 ---\n` +
+      '    const japanProxyNames = new Set((activeRegionMap.get("JP") || {}).proxies || []);\n' +
+      '    const nonJapanNames = allNames.filter((name) => !japanProxyNames.has(name));\n\n' +
+      nonJapanNamesAnchor,
+    'sing-mix 非日本节点集合',
+  );
+
+  const populatedGroupCallAnchor =
+    '      activeRegionMap,\n' +
+    '      activeRegionNameSet,\n' +
+    '      otherProxyNames,\n' +
+    '      infoNames\n' +
+    '    });';
+  source = replaceOnce(
+    source,
+    populatedGroupCallAnchor,
+    '      activeRegionMap,\n' +
+      '      activeRegionNameSet,\n' +
+      '      nonJapanNames,\n' +
+      '      otherProxyNames,\n' +
+      '      infoNames\n' +
+      '    });',
+    'sing-mix 非空节点组调用',
+  );
+
+  const emptyGroupCallAnchor =
+    '      activeRegionMap: new Map(),\n' + '      activeRegionNameSet: new Set(),\n' + '      otherProxyNames: [],';
+  source = replaceOnce(
+    source,
+    emptyGroupCallAnchor,
+    '      activeRegionMap: new Map(),\n' +
+      '      activeRegionNameSet: new Set(),\n' +
+      '      nonJapanNames: [],\n' +
+      '      otherProxyNames: [],',
+    'sing-mix 空节点组调用',
+  );
+
+  const requiredFragments = [
+    '"RULE-SET,custom_direct,DIRECT"',
+    '"RULE-SET,custom_jp,JP"',
+    '"RULE-SET,custom_nojp,非日本"',
+    '"RULE-SET,custom_proxy,main"',
+    'providers.custom_direct',
+    'custom-rules/direct.yaml',
+    'custom-rules/proxy.yaml',
+    'custom-rules/JP.yaml',
+    'custom-rules/NoJP.yaml',
+    'const nonJapanNames = allNames.filter((name) => !japanProxyNames.has(name))',
+    'add("main", "select", ["REJECT"], "Available.png")',
+    'add("ai", "select", ["REJECT"], "ChatGPT.png")',
+    'add("tg", "select", ["REJECT"], "Telegram.png")',
+    'add("JP", "select", ["REJECT"], "Japan.png")',
+    'add("非日本", "select", ["REJECT"], "World_Map.png")',
+  ];
+  for (const fragment of requiredFragments) {
+    if (!source.includes(fragment)) {
+      throw new Error(`sing-mix 生成结果缺少必要内容：${fragment}`);
+    }
+  }
+
+  return source.endsWith('\n') ? source : `${source}\n`;
+}
+
 function parseArguments(argv) {
   const options = {
+    target: null,
     input: null,
-    output: DEFAULT_OUTPUT_PATH,
-    state: DEFAULT_STATE_PATH,
+    output: null,
+    state: null,
     sha: null,
     check: false,
   };
@@ -170,7 +382,7 @@ function parseArguments(argv) {
       options.check = true;
       continue;
     }
-    if (!['--input', '--output', '--state', '--sha'].includes(argument)) {
+    if (!['--target', '--input', '--output', '--state', '--sha'].includes(argument)) {
       throw new Error(`未知参数：${argument}`);
     }
     const value = argv[index + 1];
@@ -179,16 +391,23 @@ function parseArguments(argv) {
     index += 1;
   }
 
-  if (options.input && !options.sha) {
-    throw new Error('使用 --input 时必须同时提供 --sha');
+  if (Boolean(options.input) !== Boolean(options.sha)) {
+    throw new Error('--input 与 --sha 必须同时提供');
   }
+
+  const hasSingleTargetOptions = Boolean(options.input || options.output || options.state || options.sha);
+  if (hasSingleTargetOptions && !options.target) options.target = 'mihomo';
+  if (options.target && !TARGETS[options.target]) {
+    throw new Error(`未知同步目标：${options.target}，可选值为 ${Object.keys(TARGETS).join('、')}`);
+  }
+
   return options;
 }
 
-async function fetchLatestUpstreamScript() {
-  const commitsUrl = new URL(`https://api.github.com/repos/${UPSTREAM_REPOSITORY}/commits`);
-  commitsUrl.searchParams.set('sha', UPSTREAM_BRANCH);
-  commitsUrl.searchParams.set('path', UPSTREAM_SCRIPT_PATH);
+async function fetchLatestUpstreamScript(target) {
+  const commitsUrl = new URL(`https://api.github.com/repos/${target.repository}/commits`);
+  commitsUrl.searchParams.set('sha', target.branch);
+  commitsUrl.searchParams.set('path', target.upstreamPath);
   commitsUrl.searchParams.set('per_page', '1');
 
   const headers = {
@@ -202,16 +421,16 @@ async function fetchLatestUpstreamScript() {
 
   const commitResponse = await fetch(commitsUrl, { headers });
   if (!commitResponse.ok) {
-    throw new Error(`查询上游提交失败：HTTP ${commitResponse.status} ${await commitResponse.text()}`);
+    throw new Error(`${target.name} 查询上游提交失败：HTTP ${commitResponse.status} ${await commitResponse.text()}`);
   }
   const commits = await commitResponse.json();
   const sha = commits?.[0]?.sha;
-  if (!sha) throw new Error('上游提交查询未返回有效 SHA');
+  if (!sha) throw new Error(`${target.name} 上游提交查询未返回有效 SHA`);
 
-  const rawUrl = `https://raw.githubusercontent.com/${UPSTREAM_REPOSITORY}/${sha}/${UPSTREAM_SCRIPT_PATH}`;
+  const rawUrl = `https://raw.githubusercontent.com/${target.repository}/${sha}/${target.upstreamPath}`;
   const scriptResponse = await fetch(rawUrl, { headers: { 'User-Agent': headers['User-Agent'] } });
   if (!scriptResponse.ok) {
-    throw new Error(`下载上游脚本失败：HTTP ${scriptResponse.status} ${await scriptResponse.text()}`);
+    throw new Error(`${target.name} 下载上游脚本失败：HTTP ${scriptResponse.status} ${await scriptResponse.text()}`);
   }
 
   return { sha, source: await scriptResponse.text() };
@@ -233,28 +452,38 @@ async function writeGeneratedFiles(outputPath, statePath, generated, sha) {
   await writeFile(statePath, `${sha}\n`, 'utf8');
 }
 
-async function main() {
-  const options = parseArguments(process.argv.slice(2));
-  const outputPath = resolve(options.output);
-  const statePath = resolve(options.state);
+async function processTarget(target, options) {
+  const output = options.output || target.outputPath;
+  const stateFile = options.state || target.statePath;
+  const outputPath = resolve(output);
+  const statePath = resolve(stateFile);
 
   const upstream = options.input
     ? { sha: options.sha, source: await readFile(resolve(options.input), 'utf8') }
-    : await fetchLatestUpstreamScript();
-  const generated = customizeScript(upstream.source);
+    : await fetchLatestUpstreamScript(target);
+  const generated = target.customize(upstream.source);
   const state = `${upstream.sha}\n`;
 
   if (options.check) {
     const [currentOutput, currentState] = await Promise.all([readCurrentFile(outputPath), readCurrentFile(statePath)]);
     if (currentOutput !== generated || currentState !== state) {
-      throw new Error(`定制脚本不是上游 ${upstream.sha} 的最新生成结果`);
+      throw new Error(`${target.name} 定制脚本不是上游 ${upstream.sha} 的最新生成结果`);
     }
-    console.log(`定制脚本已与上游 ${upstream.sha} 保持同步`);
+    console.log(`${target.name} 定制脚本已与上游 ${upstream.sha} 保持同步`);
     return;
   }
 
   await writeGeneratedFiles(outputPath, statePath, generated, upstream.sha);
-  console.log(`已基于上游 ${upstream.sha} 生成 ${options.output}`);
+  console.log(`已基于 ${target.name} 上游 ${upstream.sha} 生成 ${output}`);
+}
+
+async function main() {
+  const options = parseArguments(process.argv.slice(2));
+  const selectedTargets = options.target ? [TARGETS[options.target]] : Object.values(TARGETS);
+
+  for (const target of selectedTargets) {
+    await processTarget(target, options);
+  }
 }
 
 const isDirectExecution = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);

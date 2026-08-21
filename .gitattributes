@@ -1,4 +1,4 @@
 *.js text eol=lf
 *.mjs text eol=lf
 .github/workflows/*.yaml text eol=lf
-.upstream/mihomoScript.sha text eol=lf
+.upstream/*.sha text eol=lf

@@ -1,13 +1,13 @@
-name: sync_upstream_mihomo_script
+name: sync_upstream_scripts
 
 on:
   schedule:
-    # 每天北京时间 09:17 检查上游脚本
+    # 每天北京时间 09:17 检查两个上游脚本
     - cron: '17 1 * * *'
   workflow_dispatch:
 
 concurrency:
-  group: sync-upstream-mihomo-script
+  group: sync-upstream-scripts
   cancel-in-progress: false
 
 permissions:
@@ -38,6 +38,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node --check Script/mihomoScript.js
+          node --check Script/sing-mix.js
           node --check scripts/sync-upstream.mjs
           node Test/test-customized-script.mjs
           node scripts/sync-upstream.mjs --check
@@ -45,15 +46,15 @@ jobs:
 
       - name: commit upstream update
         run: |
-          git add Script/mihomoScript.js .upstream/mihomoScript.sha
+          git add Script/mihomoScript.js Script/sing-mix.js
+          git add .upstream/mihomoScript.sha .upstream/sing-mix.sha
 
           if git diff --cached --quiet; then
-            echo "No upstream script changes"
+            echo "No upstream changes"
             exit 0
           fi
 
-          upstream_sha="$(tr -d '\r\n' < .upstream/mihomoScript.sha)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(sync): update mihomoScript from ${upstream_sha:0:7}"
+          git commit -m "chore(sync): update customized upstream scripts"
           git push origin HEAD:main
