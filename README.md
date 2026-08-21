@@ -17,7 +17,7 @@ https://raw.githubusercontent.com/SaiyoujiYuyuko/MyClash-CustomRules/main/Script
   - `JP.yaml` -> `日本`
   - `NoJP.yaml` -> `非日本`
 - 自定义规则按 `直连 -> 日本 -> 非日本 -> 默认代理` 的顺序优先匹配。
-- `日本` 与 `非日本` 策略组始终存在；无匹配节点时使用上游脚本的 `empty-fallback: REJECT`。
+- `日本` 与 `非日本` 策略组始终存在；无匹配节点时显式使用 `REJECT` 兜底，避免规则引用不存在或静态空组导致配置加载失败。
 
 ## 自动更新
 

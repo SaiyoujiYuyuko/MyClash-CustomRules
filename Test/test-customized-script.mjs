@@ -11,7 +11,7 @@ function normalize(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function loadMain() {
+function loadRuntime() {
   const sandbox = {
     module: { exports: {} },
     console,
@@ -23,10 +23,10 @@ function loadMain() {
     clearTimeout,
   };
   vm.createContext(sandbox);
-  vm.runInContext(`${source}\n;module.exports = { main };`, sandbox, {
+  vm.runInContext(`${source}\n;module.exports = { main, ruleOptionsEnable };`, sandbox, {
     filename: 'mihomoScript.js',
   });
-  return sandbox.module.exports.main;
+  return sandbox.module.exports;
 }
 
 function makeProxy(name, server) {
@@ -44,7 +44,7 @@ function groupByName(output, name) {
   return output['proxy-groups'].find((group) => group.name === name);
 }
 
-const main = loadMain();
+const { main, ruleOptionsEnable } = loadRuntime();
 const output = main({
   proxies: [
     makeProxy('日本 Tokyo 01', 'jp.example.com'),
@@ -122,13 +122,30 @@ assert.ok(
 );
 
 const onlyJapan = main({ proxies: [makeProxy('日本 ONLY', 'jp-only.example.com')] });
-assert.equal(groupByName(onlyJapan, '日本-自动选择').proxies.length, 1);
-assert.equal(groupByName(onlyJapan, '非日本-自动选择').proxies.length, 0);
+assert.deepEqual(normalize(groupByName(onlyJapan, '日本-自动选择').proxies), ['🇯🇵 日本 ONLY']);
+assert.deepEqual(normalize(groupByName(onlyJapan, '非日本-自动选择').proxies), ['REJECT']);
+assert.deepEqual(normalize(groupByName(onlyJapan, '非日本').proxies), ['非日本-自动选择', 'REJECT']);
 
 const onlyNonJapan = main({ proxies: [makeProxy('美国 ONLY', 'us-only.example.com')] });
-assert.equal(groupByName(onlyNonJapan, '日本-自动选择').proxies.length, 0);
-assert.equal(groupByName(onlyNonJapan, '非日本-自动选择').proxies.length, 1);
+assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本-自动选择').proxies), ['REJECT']);
+assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本').proxies), ['日本-自动选择', 'REJECT']);
+assert.deepEqual(normalize(groupByName(onlyNonJapan, '非日本-自动选择').proxies), ['🇺🇸 美国 ONLY']);
 assert.equal(groupByName(onlyNonJapan, '默认代理').proxies[0], '美国', '空日本组不应成为默认代理首选项');
+
+const generateRegionAutoSelect = ruleOptionsEnable.生成地区自动选择组;
+try {
+  ruleOptionsEnable.生成地区自动选择组 = false;
+
+  const onlyJapanWithoutAuto = main({ proxies: [makeProxy('日本 ONLY', 'jp-only.example.com')] });
+  assert.equal(groupByName(onlyJapanWithoutAuto, '非日本-自动选择'), undefined);
+  assert.deepEqual(normalize(groupByName(onlyJapanWithoutAuto, '非日本').proxies), ['REJECT']);
+
+  const onlyNonJapanWithoutAuto = main({ proxies: [makeProxy('美国 ONLY', 'us-only.example.com')] });
+  assert.equal(groupByName(onlyNonJapanWithoutAuto, '日本-自动选择'), undefined);
+  assert.deepEqual(normalize(groupByName(onlyNonJapanWithoutAuto, '日本').proxies), ['REJECT']);
+} finally {
+  ruleOptionsEnable.生成地区自动选择组 = generateRegionAutoSelect;
+}
 
 assert.throws(() => customizeScript(source), /已经包含自定义修改/);
 assert.throws(() => customizeScript(''), /prefixRules/);

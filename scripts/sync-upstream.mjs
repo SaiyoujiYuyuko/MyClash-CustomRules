@@ -119,13 +119,14 @@ export function customizeScript(upstreamSource) {
       `  // --- ${CUSTOMIZATION_MARKER}：日本节点的严格补集 ---\n` +
       '  const japanProxyNames = new Set(regionGroups[japanRegionName]);\n' +
       '  const nonJapanProxies = allProxies.map((proxy) => proxy.name).filter((name) => !japanProxyNames.has(name));\n' +
+      "  const nonJapanGroupProxies = nonJapanProxies.length > 0 ? nonJapanProxies : ['REJECT'];\n" +
       '  generatedRegionGroups.push(\n' +
-      '    ...createRegionGroup(nonJapanRegionDefinition.name, nonJapanRegionDefinition.icon, nonJapanProxies),\n' +
+      '    ...createRegionGroup(nonJapanRegionDefinition.name, nonJapanRegionDefinition.icon, nonJapanGroupProxies),\n' +
       '  );\n\n' +
-      '  // 日本组被规则直接引用；无日本节点时追加空兜底组，但不让它成为“默认代理”的首选项\n' +
+      '  // 日本组被规则直接引用；无日本节点时追加 REJECT 兜底组，但不让它成为“默认代理”的首选项\n' +
       '  if (japanProxyNames.size === 0) {\n' +
       '    const japanRegionDefinition = regionDefinitions.find((region) => region.name === japanRegionName);\n' +
-      '    generatedRegionGroups.push(...createRegionGroup(japanRegionName, japanRegionDefinition.icon, []));\n' +
+      "    generatedRegionGroups.push(...createRegionGroup(japanRegionName, japanRegionDefinition.icon, ['REJECT']));\n" +
       '  }\n\n' +
       '  if (otherProxies.length > 0) {',
     'buildRegionGroups 非日本组',
@@ -142,6 +143,8 @@ export function customizeScript(upstreamSource) {
     'custom-rules/JP.yaml',
     'custom-rules/NoJP.yaml',
     "name: '非日本'",
+    "nonJapanProxies.length > 0 ? nonJapanProxies : ['REJECT']",
+    "createRegionGroup(japanRegionName, japanRegionDefinition.icon, ['REJECT'])",
   ];
   for (const fragment of requiredFragments) {
     if (!source.includes(fragment)) {
