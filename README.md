@@ -21,12 +21,12 @@ https://raw.githubusercontent.com/SaiyoujiYuyuko/MyClash-CustomRules/main/Script
 
 两个覆写脚本均新增 `非日本` 地区组，其节点为脚本实际日本地区节点的严格补集，并新增以下四个 CustomRules 规则集：
 
-| 规则集        | `mihomoScript.js` 目标 | `sing-mix.js` 目标 |
-| ------------- | ---------------------- | ------------------ |
-| `direct.yaml` | `直连`                 | `DIRECT`           |
-| `proxy.yaml`  | `默认代理`             | `main`             |
-| `JP.yaml`     | `日本`                 | `JP`               |
-| `NoJP.yaml`   | `非日本`               | `非日本`           |
+| 规则集                                                                                                       | `mihomoScript.js` 目标 | `sing-mix.js` 目标 |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------- | ------------------ |
+| [`direct.yaml`](https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/direct.yaml) | `直连`                 | `DIRECT`           |
+| [`proxy.yaml`](https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/proxy.yaml)   | `默认代理`             | `main`             |
+| [`JP.yaml`](https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml)         | `日本`                 | `JP`               |
+| [`NoJP.yaml`](https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml)     | `非日本`               | `非日本`           |
 
 自定义规则按 `直连 -> 日本 -> 非日本 -> 代理` 的顺序优先匹配。日本与非日本策略组始终存在；无匹配节点时显式使用 `REJECT`，避免规则引用不存在的策略组或生成静态空组。
 
@@ -52,6 +52,7 @@ node scripts/sync-upstream.mjs --check
 
 - `Script/mihomoScript.js`：基于 `AIsouler/MyClash` 的生成结果。
 - `Script/sing-mix.js`：基于 `Sakyvo/sing-mix` 的生成结果。
+- `CustomRules/*.yaml`：两个覆写脚本使用的自定义规则集。
 - `scripts/sync-upstream.mjs`：双上游下载与确定性定制生成器。
 - `.upstream/*.sha`：各生成结果对应的上游提交。
 - `Test/test-customized-script.mjs`：定制规则和地区组的零依赖测试。

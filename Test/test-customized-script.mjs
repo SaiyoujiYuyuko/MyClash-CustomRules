@@ -59,16 +59,16 @@ const output = main({
 
 const expectedProviders = {
   custom_direct: {
-    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/direct.yaml',
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/direct.yaml',
   },
   custom_proxy: {
-    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/proxy.yaml',
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/proxy.yaml',
   },
   custom_jp: {
-    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/JP.yaml',
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml',
   },
   custom_nojp: {
-    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/NoJP.yaml',
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml',
   },
 };
 

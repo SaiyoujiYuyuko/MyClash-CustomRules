@@ -228,22 +228,22 @@ const baseRuleProviders = {
   // --- CustomRules 自动同步定制：自定义规则集 ---
   custom_direct: {
     ...ruleProviderCommonClassical,
-    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/direct.yaml',
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/direct.yaml',
     path: './ruleset/custom_direct.yaml',
   },
   custom_proxy: {
     ...ruleProviderCommonClassical,
-    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/proxy.yaml',
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/proxy.yaml',
     path: './ruleset/custom_proxy.yaml',
   },
   custom_jp: {
     ...ruleProviderCommonClassical,
-    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/JP.yaml',
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml',
     path: './ruleset/custom_jp.yaml',
   },
   custom_nojp: {
     ...ruleProviderCommonClassical,
-    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/NoJP.yaml',
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml',
     path: './ruleset/custom_nojp.yaml',
   },
 

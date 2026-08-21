@@ -95,22 +95,22 @@ export function customizeScript(upstreamSource) {
     `${providersAnchor}  // --- ${CUSTOMIZATION_MARKER}：自定义规则集 ---\n` +
       '  custom_direct: {\n' +
       '    ...ruleProviderCommonClassical,\n' +
-      "    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/direct.yaml',\n" +
+      "    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/direct.yaml',\n" +
       "    path: './ruleset/custom_direct.yaml',\n" +
       '  },\n' +
       '  custom_proxy: {\n' +
       '    ...ruleProviderCommonClassical,\n' +
-      "    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/proxy.yaml',\n" +
+      "    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/proxy.yaml',\n" +
       "    path: './ruleset/custom_proxy.yaml',\n" +
       '  },\n' +
       '  custom_jp: {\n' +
       '    ...ruleProviderCommonClassical,\n' +
-      "    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/JP.yaml',\n" +
+      "    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml',\n" +
       "    path: './ruleset/custom_jp.yaml',\n" +
       '  },\n' +
       '  custom_nojp: {\n' +
       '    ...ruleProviderCommonClassical,\n' +
-      "    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/NoJP.yaml',\n" +
+      "    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml',\n" +
       "    path: './ruleset/custom_nojp.yaml',\n" +
       '  },\n\n',
     'baseRuleProviders',
@@ -155,10 +155,10 @@ export function customizeScript(upstreamSource) {
     "'RULE-SET,custom_nojp,非日本'",
     "'RULE-SET,custom_proxy,默认代理'",
     "behavior: 'classical'",
-    'custom-rules/direct.yaml',
-    'custom-rules/proxy.yaml',
-    'custom-rules/JP.yaml',
-    'custom-rules/NoJP.yaml',
+    'CustomRules/direct.yaml',
+    'CustomRules/proxy.yaml',
+    'CustomRules/JP.yaml',
+    'CustomRules/NoJP.yaml',
     "name: '非日本'",
     "nonJapanProxies.length > 0 ? nonJapanProxies : ['REJECT']",
     "createRegionGroup(japanRegionName, japanRegionDefinition.icon, ['REJECT'])",
@@ -192,22 +192,22 @@ export function customizeSingMixScript(upstreamSource) {
       '  };\n\n' +
       '  providers.custom_direct = {\n' +
       '    ...customRuleProviderBase,\n' +
-      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/direct.yaml",\n' +
+      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/direct.yaml",\n' +
       '    path: "./rules/custom_direct.yaml"\n' +
       '  };\n' +
       '  providers.custom_proxy = {\n' +
       '    ...customRuleProviderBase,\n' +
-      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/proxy.yaml",\n' +
+      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/proxy.yaml",\n' +
       '    path: "./rules/custom_proxy.yaml"\n' +
       '  };\n' +
       '  providers.custom_jp = {\n' +
       '    ...customRuleProviderBase,\n' +
-      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/JP.yaml",\n' +
+      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml",\n' +
       '    path: "./rules/custom_jp.yaml"\n' +
       '  };\n' +
       '  providers.custom_nojp = {\n' +
       '    ...customRuleProviderBase,\n' +
-      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/NoJP.yaml",\n' +
+      '    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml",\n' +
       '    path: "./rules/custom_nojp.yaml"\n' +
       '  };\n\n' +
       providersAnchor,
@@ -346,10 +346,10 @@ export function customizeSingMixScript(upstreamSource) {
     '"RULE-SET,custom_nojp,非日本"',
     '"RULE-SET,custom_proxy,main"',
     'providers.custom_direct',
-    'custom-rules/direct.yaml',
-    'custom-rules/proxy.yaml',
-    'custom-rules/JP.yaml',
-    'custom-rules/NoJP.yaml',
+    'CustomRules/direct.yaml',
+    'CustomRules/proxy.yaml',
+    'CustomRules/JP.yaml',
+    'CustomRules/NoJP.yaml',
     'const nonJapanNames = allNames.filter((name) => !japanProxyNames.has(name))',
     'add("main", "select", ["REJECT"], "Available.png")',
     'add("ai", "select", ["REJECT"], "ChatGPT.png")',

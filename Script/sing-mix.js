@@ -220,22 +220,22 @@ const buildRuleProviders = () => {
 
   providers.custom_direct = {
     ...customRuleProviderBase,
-    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/direct.yaml",
+    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/direct.yaml",
     path: "./rules/custom_direct.yaml"
   };
   providers.custom_proxy = {
     ...customRuleProviderBase,
-    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/proxy.yaml",
+    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/proxy.yaml",
     path: "./rules/custom_proxy.yaml"
   };
   providers.custom_jp = {
     ...customRuleProviderBase,
-    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/JP.yaml",
+    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml",
     path: "./rules/custom_jp.yaml"
   };
   providers.custom_nojp = {
     ...customRuleProviderBase,
-    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/CustomRules@main/custom-rules/NoJP.yaml",
+    url: "https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml",
     path: "./rules/custom_nojp.yaml"
   };
 

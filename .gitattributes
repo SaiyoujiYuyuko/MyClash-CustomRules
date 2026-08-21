@@ -2,3 +2,4 @@
 *.mjs text eol=lf
 .github/workflows/*.yaml text eol=lf
 .upstream/*.sha text eol=lf
+CustomRules/*.yaml text eol=lf
