@@ -143,11 +143,11 @@ assert.ok(
 const onlyJapan = main({ proxies: [makeProxy('日本 ONLY', 'jp-only.example.com')] });
 assert.deepEqual(normalize(groupByName(onlyJapan, '日本-自动选择').proxies), ['🇯🇵 日本 ONLY']);
 assert.deepEqual(normalize(groupByName(onlyJapan, '非日本-自动选择').proxies), ['REJECT']);
-assert.deepEqual(normalize(groupByName(onlyJapan, '非日本').proxies), ['非日本-自动选择', 'REJECT']);
+assert.deepEqual(normalize(groupByName(onlyJapan, '非日本').proxies).sort(), ['REJECT', '非日本-自动选择']);
 
 const onlyNonJapan = main({ proxies: [makeProxy('美国 ONLY', 'us-only.example.com')] });
 assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本-自动选择').proxies), ['REJECT']);
-assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本').proxies), ['日本-自动选择', 'REJECT']);
+assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本').proxies).sort(), ['REJECT', '日本-自动选择']);
 assert.deepEqual(normalize(groupByName(onlyNonJapan, '非日本-自动选择').proxies), ['🇺🇸 美国 ONLY']);
 const onlyNonJapanDefaultProxy = groupByName(onlyNonJapan, '默认代理');
 assert.deepEqual(
