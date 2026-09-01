@@ -1085,6 +1085,12 @@ function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customize
 
   // 获取基础策略组名称
   const baseGroupNames = baseGroups.filter((g) => ruleOptionsEnable[g.name]).map((g) => g.name);
+  // --- CustomRules 自动同步定制：默认代理候选顺序 ---
+  const defaultProxyBaseGroupOrder = ['自动选择', '手动选择', '负载均衡'];
+  const defaultProxyBaseGroupNames = [
+    ...defaultProxyBaseGroupOrder.filter((name) => baseGroupNames.includes(name)),
+    ...baseGroupNames.filter((name) => !defaultProxyBaseGroupOrder.includes(name)),
+  ];
 
   // 自建节点策略组名称（未配置自定义节点时为空数组）
   const customGroupNames = customGroup ? [customGroup.name] : [];
@@ -1092,7 +1098,7 @@ function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customize
   functionalGroups.push({
     ...selectBaseOption,
     name: '默认代理',
-    proxies: [...groupNamesOfSelect, ...baseGroupNames, ...customGroupNames],
+    proxies: [...defaultProxyBaseGroupNames, ...groupNamesOfSelect, ...customGroupNames],
     icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Proxy.png',
   });
 
@@ -1147,6 +1153,7 @@ function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customize
     ...selectBaseOption,
     name: '漏网之鱼',
     proxies: ['默认代理', '直连', ...groupNamesOfSelect],
+    'default-selected': '直连',
     icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Stack.png',
   });
 

@@ -112,6 +112,20 @@ for (const rule of expectedRules) {
   assert.ok(groupNames.has(rule.split(',')[2]), `规则目标策略组不存在：${rule}`);
 }
 
+const defaultProxyGroup = groupByName(output, '默认代理');
+assert.deepEqual(
+  normalize(defaultProxyGroup.proxies.slice(0, 3)),
+  ['自动选择', '手动选择', '负载均衡'],
+  '默认代理应优先提供自动选择、手动选择和负载均衡',
+);
+for (const regionName of ['香港', '日本', '美国', '非日本']) {
+  assert.ok(
+    defaultProxyGroup.proxies.indexOf(regionName) >= 3,
+    `默认代理的区域组 ${regionName} 应排在基础组之后`,
+  );
+}
+assert.equal(groupByName(output, '漏网之鱼')['default-selected'], '直连');
+
 const proxyNames = normalize(output.proxies.filter((proxy) => proxy.type !== 'direct').map((proxy) => proxy.name));
 const japanProxyNames = normalize(groupByName(output, '日本-自动选择').proxies);
 const nonJapanProxyNames = normalize(groupByName(output, '非日本-自动选择').proxies);
@@ -135,7 +149,16 @@ const onlyNonJapan = main({ proxies: [makeProxy('美国 ONLY', 'us-only.example.
 assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本-自动选择').proxies), ['REJECT']);
 assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本').proxies), ['日本-自动选择', 'REJECT']);
 assert.deepEqual(normalize(groupByName(onlyNonJapan, '非日本-自动选择').proxies), ['🇺🇸 美国 ONLY']);
-assert.equal(groupByName(onlyNonJapan, '默认代理').proxies[0], '美国', '空日本组不应成为默认代理首选项');
+const onlyNonJapanDefaultProxy = groupByName(onlyNonJapan, '默认代理');
+assert.deepEqual(
+  normalize(onlyNonJapanDefaultProxy.proxies.slice(0, 4)),
+  ['自动选择', '手动选择', '负载均衡', '美国'],
+  '默认代理应先显示基础组，再显示有效区域组',
+);
+assert.ok(
+  onlyNonJapanDefaultProxy.proxies.indexOf('日本') > onlyNonJapanDefaultProxy.proxies.indexOf('美国'),
+  '空日本组不应排在有效非日本区域组之前',
+);
 
 const generateRegionAutoSelect = ruleOptionsEnable.生成地区自动选择组;
 try {

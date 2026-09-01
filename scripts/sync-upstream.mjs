@@ -149,6 +149,44 @@ export function customizeScript(upstreamSource) {
     'buildRegionGroups 非日本组',
   );
 
+  const defaultProxyBaseGroupsAnchor =
+    '  const baseGroupNames = baseGroups.filter((g) => ruleOptionsEnable[g.name]).map((g) => g.name);\n';
+  source = replaceOnce(
+    source,
+    defaultProxyBaseGroupsAnchor,
+    defaultProxyBaseGroupsAnchor +
+      `  // --- ${CUSTOMIZATION_MARKER}：默认代理候选顺序 ---\n` +
+      "  const defaultProxyBaseGroupOrder = ['自动选择', '手动选择', '负载均衡'];\n" +
+      '  const defaultProxyBaseGroupNames = [\n' +
+      '    ...defaultProxyBaseGroupOrder.filter((name) => baseGroupNames.includes(name)),\n' +
+      '    ...baseGroupNames.filter((name) => !defaultProxyBaseGroupOrder.includes(name)),\n' +
+      '  ];\n',
+    '默认代理基础组顺序',
+  );
+
+  const defaultProxyListAnchor =
+    '    proxies: [...groupNamesOfSelect, ...baseGroupNames, ...customGroupNames],\n';
+  source = replaceOnce(
+    source,
+    defaultProxyListAnchor,
+    '    proxies: [...defaultProxyBaseGroupNames, ...groupNamesOfSelect, ...customGroupNames],\n',
+    '默认代理候选列表顺序',
+  );
+
+  const fallbackGroupAnchor =
+    "    name: '漏网之鱼',\n" +
+    "    proxies: ['默认代理', '直连', ...groupNamesOfSelect],\n" +
+    "    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Stack.png',\n";
+  source = replaceOnce(
+    source,
+    fallbackGroupAnchor,
+    "    name: '漏网之鱼',\n" +
+      "    proxies: ['默认代理', '直连', ...groupNamesOfSelect],\n" +
+      "    'default-selected': '直连',\n" +
+      "    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Stack.png',\n",
+    '漏网之鱼默认选择',
+  );
+
   const requiredFragments = [
     "'RULE-SET,custom_direct,直连'",
     "'RULE-SET,custom_jp,日本'",
@@ -162,6 +200,9 @@ export function customizeScript(upstreamSource) {
     "name: '非日本'",
     "nonJapanProxies.length > 0 ? nonJapanProxies : ['REJECT']",
     "createRegionGroup(japanRegionName, japanRegionDefinition.icon, ['REJECT'])",
+    "const defaultProxyBaseGroupOrder = ['自动选择', '手动选择', '负载均衡'];",
+    'proxies: [...defaultProxyBaseGroupNames, ...groupNamesOfSelect, ...customGroupNames]',
+    "'default-selected': '直连'",
   ];
   for (const fragment of requiredFragments) {
     if (!source.includes(fragment)) {
