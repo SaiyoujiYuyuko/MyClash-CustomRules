@@ -1,0 +1,996 @@
+# gangz1o/clash4docker 本地配置模式公开模板。
+# 部署前请替换 URL1-URL4、CHANGE_ME_DASHBOARD_SECRET 和示例媒体域名。
+mixed-port: 7892
+allow-lan: true
+bind-address: '*'
+mode: rule
+log-level: error
+ipv6: true
+external-controller: 0.0.0.0:9090
+# 替换为强随机密钥，并在 Dashboard 中填写相同的值。
+secret: 'CHANGE_ME_DASHBOARD_SECRET'
+unified-delay: true
+tcp-concurrent: true
+keep-alive-interval: 30
+profile:
+  store-selected: true
+  store-fake-ip: true
+dns:
+  enable: true
+  ipv6: true
+  use-hosts: true
+  cache-algorithm: arc
+  use-system-hosts: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/15
+  fake-ip-range6: 2001:2::1/48
+  fake-ip-filter:
+    - rule-set:private
+    - rule-set:fakeip_filter
+    - rule-set:geolocation-cn
+  proxy-server-nameserver:
+    - https://223.5.5.5/dns-query#DIRECT
+    - https://1.12.12.12/dns-query#DIRECT
+  default-nameserver:
+    - https://223.5.5.5/dns-query#DIRECT
+    - https://1.12.12.12/dns-query#DIRECT
+  nameserver:
+    - https://cloudflare-dns.com/dns-query#默认代理
+    - https://dns.google/dns-query#默认代理
+  nameserver-policy:
+    rule-set:cn:
+      - 223.5.5.5
+      - 119.29.29.29
+  direct-nameserver:
+    - system
+    - 223.5.5.5
+    - 119.29.29.29
+hosts:
+  cloudflare-dns.com:
+    - 1.1.1.1
+    - 1.0.0.1
+  dns.google:
+    - 8.8.8.8
+    - 8.8.4.4
+  services.googleapis.cn: services.googleapis.com
+  +.mcdn.bilivideo.com:
+    - 0.0.0.0
+  +.mcdn.bilivideo.cn:
+    - 0.0.0.0
+  +.edge.mountaintoys.cn:
+    - 0.0.0.0
+  +.h2.smtcdns.net:
+    - 0.0.0.0
+  dns.msftncsi.com:
+    - 131.107.255.255
+    - fd3e:4f5a:5b81::1
+proxy-providers:
+  # provider1-provider4 是公开模板名称；重命名时需同步修改各代理组的 use 列表。
+  provider1:
+    type: http
+    url: 'URL1' # 替换为第 1 个 Mihomo/Clash YAML 订阅地址。
+    path: ./providers/provider1.yaml
+    interval: 21600
+    health-check:
+      enable: true
+      url: https://www.apple.com/library/test/success.html
+      interval: 600
+      timeout: 3000
+      lazy: true
+    override:
+      additional-prefix: '[provider1] '
+  provider2:
+    type: http
+    url: 'URL2' # 替换为第 2 个 Mihomo/Clash YAML 订阅地址。
+    path: ./providers/provider2.yaml
+    interval: 21600
+    health-check:
+      enable: true
+      url: https://www.apple.com/library/test/success.html
+      interval: 600
+      timeout: 3000
+      lazy: true
+    override:
+      additional-prefix: '[provider2] '
+  provider3:
+    type: http
+    url: 'URL3' # 替换为第 3 个 Mihomo/Clash YAML 订阅地址。
+    path: ./providers/provider3.yaml
+    interval: 21600
+    health-check:
+      enable: true
+      url: https://www.apple.com/library/test/success.html
+      interval: 600
+      timeout: 3000
+      lazy: true
+    override:
+      additional-prefix: '[provider3] '
+  provider4:
+    type: http
+    url: 'URL4' # 替换为第 4 个 Mihomo/Clash YAML 订阅地址。
+    path: ./providers/provider4.yaml
+    interval: 21600
+    health-check:
+      enable: true
+      url: https://www.apple.com/library/test/success.html
+      interval: 600
+      timeout: 3000
+      lazy: true
+    override:
+      additional-prefix: '[provider4] '
+proxies:
+  - name: 🇨🇳 直连 | 双栈
+    type: direct
+  - name: 🇨🇳 直连 | IPv4优先
+    type: direct
+    ip-version: ipv4-prefer
+  - name: 🇨🇳 直连 | IPv6优先
+    type: direct
+    ip-version: ipv6-prefer
+  - name: 🇨🇳 直连 | 仅IPv4
+    type: direct
+    ip-version: ipv4
+  - name: 🇨🇳 直连 | 仅IPv6
+    type: direct
+    ip-version: ipv6
+proxy-groups:
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: GLOBAL
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - FCM
+      - YouTube
+      - Google
+      - AI
+      - Microsoft
+      - Apple
+      - Telegram
+      - Steam
+      - TikTok
+      - Twitter
+      - Instagram
+      - Netflix
+      - Emby
+      - PikPak
+      - Spotify
+      - Crypto
+      - EHentai
+      - AdBlock
+      - 漏网之鱼
+      - 直连
+      - 美国-自动选择
+      - 美国
+      - 非日本-自动选择
+      - 非日本
+      - 日本-自动选择
+      - 日本
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Global.png
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: 默认代理
+    proxies:
+      - 自动选择
+      - 手动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Proxy.png
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: 手动选择
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Static.png
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: url-test
+    tolerance: 50
+    exclude-type: DIRECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Auto.png
+    hidden: true
+    name: 自动选择
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: load-balance
+    strategy: sticky-sessions
+    exclude-type: DIRECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Round_Robin.png
+    hidden: true
+    name: 负载均衡
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: FCM
+    icon: https://fastly.jsdelivr.net/gh/MiToverG422/Qure@master/IconSet/Color/fcm.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+      - 直连
+    default-selected: 直连
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: YouTube
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/YouTube.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Google
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Google_Search.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: AI
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/ChatGPT.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+    default-selected: 美国
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Microsoft
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Microsoft.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+      - 直连
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Apple
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Apple.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+      - 直连
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Telegram
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Telegram.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Steam
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Steam.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+      - 直连
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: TikTok
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/TikTok.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+    default-selected: 日本
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Twitter
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Twitter.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Instagram
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Instagram.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Netflix
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Netflix.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Emby
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Emby.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+      - 直连
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: PikPak
+    icon: https://fastly.jsdelivr.net/gh/lige47/QuanX-icon-rule@main/icon/03CNSoft/pikpak.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+      - 直连
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Spotify
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Spotify.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+      - 直连
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: Crypto
+    icon: https://fastly.jsdelivr.net/gh/lige47/QuanX-icon-rule@main/icon/04ProxySoft/Bitcoin.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+    default-selected: 日本
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: EHentai
+    icon: https://fastly.jsdelivr.net/gh/lige47/QuanX-icon-rule@main/icon/04ProxySoft/exhentai.png
+    proxies:
+      - 默认代理
+      - 手动选择
+      - 自动选择
+      - 负载均衡
+      - 美国
+      - 非日本
+      - 日本
+    default-selected: 美国
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: AdBlock
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Advertising.png
+    proxies:
+      - REJECT
+      - REJECT-DROP
+      - PASS
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: 漏网之鱼
+    proxies:
+      - 默认代理
+      - 直连
+      - 美国
+      - 非日本
+      - 日本
+    default-selected: 直连
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Stack.png
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: 直连
+    proxies:
+      - 🇨🇳 直连 | 双栈
+      - 🇨🇳 直连 | IPv4优先
+      - 🇨🇳 直连 | IPv6优先
+      - 🇨🇳 直连 | 仅IPv4
+      - 🇨🇳 直连 | 仅IPv6
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/China.png
+    hidden: false
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: url-test
+    tolerance: 50
+    exclude-type: DIRECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Auto.png
+    hidden: true
+    name: 美国-自动选择
+    filter: (?i)(🇺🇸|美国|美國|United[ _-]?States|\bUSA?\b|洛杉矶|洛杉磯|圣何塞|聖何塞|西雅图|西雅圖|纽约|紐約|达拉斯|達拉斯|芝加哥|凤凰城|鳳凰城|Los[ _-]?Angeles|San[ _-]?Jose|Seattle|New[ _-]?York|Dallas|Chicago)
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: 美国
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/United_States.png
+    proxies:
+      - 美国-自动选择
+    filter: (?i)(🇺🇸|美国|美國|United[ _-]?States|\bUSA?\b|洛杉矶|洛杉磯|圣何塞|聖何塞|西雅图|西雅圖|纽约|紐約|达拉斯|達拉斯|芝加哥|凤凰城|鳳凰城|Los[ _-]?Angeles|San[ _-]?Jose|Seattle|New[ _-]?York|Dallas|Chicago)
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+    hidden: false
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: url-test
+    tolerance: 50
+    exclude-type: DIRECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Auto.png
+    hidden: true
+    name: 非日本-自动选择
+    exclude-filter: (?i)(🇯🇵|日本|Japan|\bJP(N)?\b|东京|東京|大阪|埼玉|横滨|橫濱|Tokyo|Osaka|Saitama|Yokohama)
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: 非日本
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/World_Map.png
+    proxies:
+      - 非日本-自动选择
+    exclude-filter: (?i)(🇯🇵|日本|Japan|\bJP(N)?\b|东京|東京|大阪|埼玉|横滨|橫濱|Tokyo|Osaka|Saitama|Yokohama)
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+    hidden: false
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: url-test
+    tolerance: 50
+    exclude-type: DIRECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Auto.png
+    hidden: true
+    name: 日本-自动选择
+    filter: (?i)(🇯🇵|日本|Japan|\bJP(N)?\b|东京|東京|大阪|埼玉|横滨|橫濱|Tokyo|Osaka|Saitama|Yokohama)
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+  - interval: 600
+    timeout: 3000
+    url: https://www.apple.com/library/test/success.html
+    lazy: true
+    max-failed-times: 3
+    empty-fallback: REJECT
+    type: select
+    name: 日本
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Japan.png
+    proxies:
+      - REJECT
+      - 日本-自动选择
+    filter: (?i)(🇯🇵|日本|Japan|\bJP(N)?\b|东京|東京|大阪|埼玉|横滨|橫濱|Tokyo|Osaka|Saitama|Yokohama)
+    use:
+      - provider1
+      - provider2
+      - provider3
+      - provider4
+    hidden: false
+rule-providers:
+  custom_direct:
+    type: http
+    format: yaml
+    interval: 86400
+    behavior: classical
+    url: https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/direct.yaml
+  custom_proxy:
+    type: http
+    format: yaml
+    interval: 86400
+    behavior: classical
+    url: https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/proxy.yaml
+  custom_jp:
+    type: http
+    format: yaml
+    interval: 86400
+    behavior: classical
+    url: https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml
+  custom_nojp:
+    type: http
+    format: yaml
+    interval: 86400
+    behavior: classical
+    url: https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml
+  private:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/private.mrs
+  private_ip:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: ipcidr
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/private.mrs
+  games_cn:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/category-games@cn.mrs
+  epicgames:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/epicgames.mrs
+  nvidia_cn:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/nvidia@cn.mrs
+  apple_cn:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/apple@cn.mrs
+  microsoft_cn:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/microsoft@cn.mrs
+  geolocation-cn:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/geolocation-cn.mrs
+  cn_ip:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: ipcidr
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/cn.mrs
+  geolocation-!cn:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/geolocation-!cn.mrs
+  fakeip_filter:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/fakeip-filter.mrs
+  cn_additional:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://static-file-global.353355.xyz/rules/cn-additional-list.mrs
+  cn:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/cn.mrs
+  adblockmihomolite:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockmihomolite.mrs
+  googlefcm:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/googlefcm.mrs
+  youtube:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/youtube.mrs
+  google:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/google.mrs
+  google_ip:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: ipcidr
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/google.mrs
+  ai:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/category-ai-!cn.mrs
+  github:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/github.mrs
+  microsoft:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/microsoft.mrs
+  apple:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/apple.mrs
+  telegram:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/telegram.mrs
+  telegram_ip:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: ipcidr
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/telegram.mrs
+  steam:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/steam.mrs
+  steam_ip:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: ipcidr
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/steam.mrs
+  tiktok:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/tiktok.mrs
+  twitter:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/twitter.mrs
+  twitter_ip:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: ipcidr
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/twitter.mrs
+  instagram:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/instagram.mrs
+  netflix:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/netflix.mrs
+  netflix_ip:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: ipcidr
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/netflix.mrs
+  emby:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/666OS/rules@release/mihomo/domain/Emby.mrs
+  emos:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/binaryu/emos-proxy-rule@main/rules/emos-mihomo.mrs
+  pikpak:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/pikpak.mrs
+  spotify:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/spotify.mrs
+  cryptocurrency:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/category-cryptocurrency.mrs
+  ehentai:
+    type: http
+    format: mrs
+    interval: 86400
+    behavior: domain
+    url: https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/ehentai.mrs
+rules:
+  - RULE-SET,custom_direct,直连
+  - RULE-SET,custom_jp,日本
+  - RULE-SET,custom_nojp,非日本
+  - RULE-SET,custom_proxy,默认代理
+  - RULE-SET,private,直连
+  - RULE-SET,games_cn,直连
+  - RULE-SET,epicgames,直连
+  - RULE-SET,nvidia_cn,直连
+  - RULE-SET,apple_cn,直连
+  - RULE-SET,microsoft_cn,直连
+  - DOMAIN,fsend.cn,直连
+  - DOMAIN,international-gfe.download.nvidia.com,直连
+  - AND,((NETWORK,UDP),(DST-PORT,443),(NOT,((OR,((RULE-SET,cn_additional),(RULE-SET,cn_ip,no-resolve)))))),REJECT
+  - RULE-SET,adblockmihomolite,AdBlock
+  - RULE-SET,googlefcm,FCM
+  - RULE-SET,youtube,YouTube
+  - RULE-SET,google,Google
+  - RULE-SET,google_ip,Google,no-resolve
+  - RULE-SET,ai,AI
+  - RULE-SET,github,默认代理
+  - RULE-SET,microsoft,Microsoft
+  - RULE-SET,apple,Apple
+  - RULE-SET,telegram,Telegram
+  - RULE-SET,telegram_ip,Telegram,no-resolve
+  - RULE-SET,steam,Steam
+  - RULE-SET,steam_ip,Steam,no-resolve
+  - RULE-SET,tiktok,TikTok
+  - RULE-SET,twitter,Twitter
+  - RULE-SET,twitter_ip,Twitter,no-resolve
+  - RULE-SET,instagram,Instagram
+  - RULE-SET,netflix,Netflix
+  - RULE-SET,netflix_ip,Netflix,no-resolve
+  - RULE-SET,emby,Emby
+  - RULE-SET,emos,Emby
+  # 可选：将以下保留示例域名替换为自己的媒体服务域名，不需要时可删除。
+  - DOMAIN-SUFFIX,emby.example.com,Emby
+  - DOMAIN-SUFFIX,media.example.com,Emby
+  - DOMAIN-KEYWORD,emby,Emby
+  - RULE-SET,pikpak,PikPak
+  - RULE-SET,spotify,Spotify
+  - RULE-SET,cryptocurrency,Crypto
+  - RULE-SET,ehentai,EHentai
+  - RULE-SET,geolocation-!cn,默认代理
+  - RULE-SET,geolocation-cn,直连
+  - RULE-SET,cn_ip,直连
+  - RULE-SET,private_ip,直连
+  - MATCH,漏网之鱼
