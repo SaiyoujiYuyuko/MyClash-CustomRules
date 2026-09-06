@@ -388,7 +388,8 @@ const buildProxyGroups = ({
 
   const add = (name, type, proxies, icon = "Available.png", extra = {}) => {
     proxies = uniq(proxies);
-    if (name && proxies.length) {
+    const hasEmptyFallback = Boolean(extra["empty-fallback"]);
+    if (name && (proxies.length || hasEmptyFallback)) {
       groups.push({
         name,
         type,
@@ -397,6 +398,17 @@ const buildProxyGroups = ({
         ...extra
       });
     }
+  };
+
+  const addRegionGroup = (name, proxies, icon) => {
+    const autoSelectName = `URL Test - ${name}`;
+    add(autoSelectName, "url-test", proxies, icon, {
+      ...SETTINGS.URL_TEST_EXTRA,
+      "empty-fallback": "DIRECT"
+    });
+    add(name, "select", [autoSelectName, ...proxies], icon, {
+      "default-selected": autoSelectName
+    });
   };
 
   add("fcm", "select", ["DIRECT"], "Google_Search.png", { hidden: true });
@@ -458,8 +470,7 @@ const buildProxyGroups = ({
     const region = activeRegionMap.get(rName);
     if (!region) return;
 
-    add(`URL Test - ${region.name}`, "url-test", region.proxies, region.icon, SETTINGS.URL_TEST_EXTRA);
-    add(region.name, "select", [`URL Test - ${region.name}`, ...region.proxies], region.icon);
+    addRegionGroup(region.name, region.proxies, region.icon);
   });
 
   // --- CustomRules 自动同步定制（sing-mix）：稳定的固定规则目标 ---
@@ -474,15 +485,10 @@ const buildProxyGroups = ({
   }
 
   if (!activeRegionNameSet.has("JP")) {
-    add("JP", "select", ["REJECT"], "Japan.png");
+    addRegionGroup("JP", [], "Japan.png");
   }
 
-  if (nonJapanNames.length) {
-    add("URL Test - 非日本", "url-test", nonJapanNames, "World_Map.png", SETTINGS.URL_TEST_EXTRA);
-    add("非日本", "select", ["URL Test - 非日本", ...nonJapanNames], "World_Map.png");
-  } else {
-    add("非日本", "select", ["REJECT"], "World_Map.png");
-  }
+  addRegionGroup("非日本", nonJapanNames, "World_Map.png");
 
   // Other 组
   if (otherProxyNames.length) {

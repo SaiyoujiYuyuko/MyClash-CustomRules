@@ -54,6 +54,8 @@ const output = main({
     makeProxy('日本 Tokyo 01', 'jp.example.com'),
     makeProxy('香港 HK 01', 'hk.example.com'),
     makeProxy('美国 US 01', 'us.example.com'),
+    makeProxy('新加坡 SG 01', 'sg.example.com'),
+    makeProxy('台湾 TW 01', 'tw.example.com'),
   ],
 });
 
@@ -118,11 +120,8 @@ assert.deepEqual(
   ['自动选择', '手动选择', '负载均衡'],
   '默认代理应优先提供自动选择、手动选择和负载均衡',
 );
-for (const regionName of ['香港', '日本', '美国', '非日本']) {
-  assert.ok(
-    defaultProxyGroup.proxies.indexOf(regionName) >= 3,
-    `默认代理的区域组 ${regionName} 应排在基础组之后`,
-  );
+for (const regionName of ['香港', '日本', '美国', '新加坡', '台湾省', '非日本']) {
+  assert.ok(defaultProxyGroup.proxies.indexOf(regionName) >= 3, `默认代理的区域组 ${regionName} 应排在基础组之后`);
 }
 assert.equal(groupByName(output, '漏网之鱼')['default-selected'], '直连');
 
@@ -130,6 +129,19 @@ const proxyNames = normalize(output.proxies.filter((proxy) => proxy.type !== 'di
 const japanProxyNames = normalize(groupByName(output, '日本-自动选择').proxies);
 const nonJapanProxyNames = normalize(groupByName(output, '非日本-自动选择').proxies);
 const japanSet = new Set(japanProxyNames);
+for (const [regionName, autoSelectName] of [
+  ['香港', '香港-自动选择'],
+  ['日本', '日本-自动选择'],
+  ['美国', '美国-自动选择'],
+  ['新加坡', '新加坡-自动选择'],
+  ['台湾省', '台湾省-自动选择'],
+  ['非日本', '非日本-自动选择'],
+]) {
+  const regionGroup = groupByName(output, regionName);
+  assert.equal(regionGroup.proxies[0], autoSelectName, `${regionName} 应将自动选择组放在首位`);
+  assert.equal(regionGroup['default-selected'], autoSelectName, `${regionName} 应默认使用自动选择组`);
+  assert.equal(groupByName(output, autoSelectName)['empty-fallback'], 'DIRECT', `${autoSelectName} 空组应回退 DIRECT`);
+}
 assert.deepEqual(
   nonJapanProxyNames,
   proxyNames.filter((name) => !japanSet.has(name)),
@@ -142,12 +154,16 @@ assert.ok(
 
 const onlyJapan = main({ proxies: [makeProxy('日本 ONLY', 'jp-only.example.com')] });
 assert.deepEqual(normalize(groupByName(onlyJapan, '日本-自动选择').proxies), ['🇯🇵 日本 ONLY']);
-assert.deepEqual(normalize(groupByName(onlyJapan, '非日本-自动选择').proxies), ['REJECT']);
-assert.deepEqual(normalize(groupByName(onlyJapan, '非日本').proxies).sort(), ['REJECT', '非日本-自动选择']);
+assert.deepEqual(normalize(groupByName(onlyJapan, '非日本-自动选择').proxies), []);
+assert.equal(groupByName(onlyJapan, '非日本-自动选择')['empty-fallback'], 'DIRECT');
+assert.deepEqual(normalize(groupByName(onlyJapan, '非日本').proxies), ['非日本-自动选择']);
+assert.equal(groupByName(onlyJapan, '非日本')['default-selected'], '非日本-自动选择');
 
 const onlyNonJapan = main({ proxies: [makeProxy('美国 ONLY', 'us-only.example.com')] });
-assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本-自动选择').proxies), ['REJECT']);
-assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本').proxies).sort(), ['REJECT', '日本-自动选择']);
+assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本-自动选择').proxies), []);
+assert.equal(groupByName(onlyNonJapan, '日本-自动选择')['empty-fallback'], 'DIRECT');
+assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本').proxies), ['日本-自动选择']);
+assert.equal(groupByName(onlyNonJapan, '日本')['default-selected'], '日本-自动选择');
 assert.deepEqual(normalize(groupByName(onlyNonJapan, '非日本-自动选择').proxies), ['🇺🇸 美国 ONLY']);
 const onlyNonJapanDefaultProxy = groupByName(onlyNonJapan, '默认代理');
 assert.deepEqual(
@@ -166,11 +182,13 @@ try {
 
   const onlyJapanWithoutAuto = main({ proxies: [makeProxy('日本 ONLY', 'jp-only.example.com')] });
   assert.equal(groupByName(onlyJapanWithoutAuto, '非日本-自动选择'), undefined);
-  assert.deepEqual(normalize(groupByName(onlyJapanWithoutAuto, '非日本').proxies), ['REJECT']);
+  assert.deepEqual(normalize(groupByName(onlyJapanWithoutAuto, '非日本').proxies), []);
+  assert.equal(groupByName(onlyJapanWithoutAuto, '非日本')['empty-fallback'], 'DIRECT');
 
   const onlyNonJapanWithoutAuto = main({ proxies: [makeProxy('美国 ONLY', 'us-only.example.com')] });
   assert.equal(groupByName(onlyNonJapanWithoutAuto, '日本-自动选择'), undefined);
-  assert.deepEqual(normalize(groupByName(onlyNonJapanWithoutAuto, '日本').proxies), ['REJECT']);
+  assert.deepEqual(normalize(groupByName(onlyNonJapanWithoutAuto, '日本').proxies), []);
+  assert.equal(groupByName(onlyNonJapanWithoutAuto, '日本')['empty-fallback'], 'DIRECT');
 } finally {
   ruleOptionsEnable.生成地区自动选择组 = generateRegionAutoSelect;
 }
@@ -185,6 +203,10 @@ const singMixOutput = singMixMain({
     makeProxy('日本 Tokyo 01', 'jp-sing-mix.example.com'),
     makeProxy('香港 HK 01', 'hk-sing-mix.example.com'),
     makeProxy('美国 US 01', 'us-sing-mix.example.com'),
+    makeProxy('台湾 TW 01', 'tw-sing-mix.example.com'),
+    makeProxy('新加坡 SG 01', 'sg-sing-mix.example.com'),
+    makeProxy('韩国 KR 01', 'kr-sing-mix.example.com'),
+    makeProxy('越南 VN 01', 'vn-sing-mix.example.com'),
   ],
 });
 
@@ -208,6 +230,25 @@ const singMixProxyNames = normalize(singMixOutput.proxies.map((proxy) => proxy.n
 const singMixJapanNames = normalize(groupByName(singMixOutput, 'URL Test - JP').proxies);
 const singMixNonJapanNames = normalize(groupByName(singMixOutput, 'URL Test - 非日本').proxies);
 const singMixJapanSet = new Set(singMixJapanNames);
+for (const [regionName, autoSelectName] of [
+  ['HK', 'URL Test - HK'],
+  ['TW', 'URL Test - TW'],
+  ['SG', 'URL Test - SG'],
+  ['JP', 'URL Test - JP'],
+  ['KR', 'URL Test - KR'],
+  ['AS', 'URL Test - AS'],
+  ['US', 'URL Test - US'],
+  ['非日本', 'URL Test - 非日本'],
+]) {
+  const regionGroup = groupByName(singMixOutput, regionName);
+  assert.equal(regionGroup.proxies[0], autoSelectName, `sing-mix ${regionName} 应将自动选择组放在首位`);
+  assert.equal(regionGroup['default-selected'], autoSelectName, `sing-mix ${regionName} 应默认使用自动选择组`);
+  assert.equal(
+    groupByName(singMixOutput, autoSelectName)['empty-fallback'],
+    'DIRECT',
+    `sing-mix ${autoSelectName} 空组应回退 DIRECT`,
+  );
+}
 assert.deepEqual(
   singMixNonJapanNames,
   singMixProxyNames.filter((name) => !singMixJapanSet.has(name)),
@@ -223,33 +264,47 @@ const singMixOnlyJapan = singMixMain({
   proxies: [makeProxy('日本 ONLY', 'jp-only-sing-mix.example.com')],
 });
 assert.deepEqual(normalize(groupByName(singMixOnlyJapan, 'URL Test - JP').proxies), ['日本 ONLY']);
-assert.equal(groupByName(singMixOnlyJapan, 'URL Test - 非日本'), undefined);
-assert.deepEqual(normalize(groupByName(singMixOnlyJapan, '非日本').proxies), ['REJECT']);
+assert.deepEqual(normalize(groupByName(singMixOnlyJapan, 'URL Test - 非日本').proxies), []);
+assert.equal(groupByName(singMixOnlyJapan, 'URL Test - 非日本')['empty-fallback'], 'DIRECT');
+assert.deepEqual(normalize(groupByName(singMixOnlyJapan, '非日本').proxies), ['URL Test - 非日本']);
+assert.equal(groupByName(singMixOnlyJapan, '非日本')['default-selected'], 'URL Test - 非日本');
 assert.ok(!groupByName(singMixOnlyJapan, 'main').proxies.includes('非日本'));
 
 const singMixOnlyNonJapan = singMixMain({
   proxies: [makeProxy('美国 ONLY', 'us-only-sing-mix.example.com')],
 });
-assert.equal(groupByName(singMixOnlyNonJapan, 'URL Test - JP'), undefined);
-assert.deepEqual(normalize(groupByName(singMixOnlyNonJapan, 'JP').proxies), ['REJECT']);
+assert.deepEqual(normalize(groupByName(singMixOnlyNonJapan, 'URL Test - JP').proxies), []);
+assert.equal(groupByName(singMixOnlyNonJapan, 'URL Test - JP')['empty-fallback'], 'DIRECT');
+assert.deepEqual(normalize(groupByName(singMixOnlyNonJapan, 'JP').proxies), ['URL Test - JP']);
+assert.equal(groupByName(singMixOnlyNonJapan, 'JP')['default-selected'], 'URL Test - JP');
 assert.deepEqual(normalize(groupByName(singMixOnlyNonJapan, 'URL Test - 非日本').proxies), ['美国 ONLY']);
 assert.ok(groupByName(singMixOnlyNonJapan, 'main').proxies.includes('非日本'));
 
 const singMixOnlyInfo = singMixMain({
   proxies: [makeProxy('订阅到期信息', 'info-only-sing-mix.example.com')],
 });
-for (const groupName of ['main', 'ai', 'tg', 'JP', '非日本']) {
+for (const groupName of ['main', 'ai', 'tg']) {
   assert.deepEqual(
     normalize(groupByName(singMixOnlyInfo, groupName).proxies),
     ['REJECT'],
     `sing-mix 仅有信息节点时 ${groupName} 应使用 REJECT 兜底`,
   );
 }
+assert.deepEqual(normalize(groupByName(singMixOnlyInfo, 'URL Test - JP').proxies), []);
+assert.equal(groupByName(singMixOnlyInfo, 'URL Test - JP')['empty-fallback'], 'DIRECT');
+assert.deepEqual(normalize(groupByName(singMixOnlyInfo, 'JP').proxies), ['URL Test - JP']);
+assert.equal(groupByName(singMixOnlyInfo, 'JP')['default-selected'], 'URL Test - JP');
+assert.deepEqual(normalize(groupByName(singMixOnlyInfo, 'URL Test - 非日本').proxies), []);
+assert.equal(groupByName(singMixOnlyInfo, 'URL Test - 非日本')['empty-fallback'], 'DIRECT');
+assert.deepEqual(normalize(groupByName(singMixOnlyInfo, '非日本').proxies), ['URL Test - 非日本']);
+assert.equal(groupByName(singMixOnlyInfo, '非日本')['default-selected'], 'URL Test - 非日本');
 
 for (const config of [singMixOnlyJapan, singMixOnlyNonJapan, singMixOnlyInfo]) {
   assert.ok(
-    config['proxy-groups'].every((group) => Array.isArray(group.proxies) && group.proxies.length > 0),
-    'sing-mix 不应生成静态空策略组',
+    config['proxy-groups'].every(
+      (group) => Array.isArray(group.proxies) && (group.proxies.length > 0 || group['empty-fallback']),
+    ),
+    'sing-mix 空策略组必须配置 empty-fallback',
   );
 }
 

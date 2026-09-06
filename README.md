@@ -48,7 +48,7 @@ https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/Script/sing-
 | [`JP.yaml`](https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml)         | `日本`                 | `JP`               |
 | [`NoJP.yaml`](https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml)     | `非日本`               | `非日本`           |
 
-自定义规则按 `直连 -> 日本 -> 非日本 -> 代理` 的顺序优先匹配。日本与非日本策略组始终存在；无匹配节点时显式使用 `REJECT`，避免规则引用不存在的策略组或生成静态空组。
+自定义规则按 `直连 -> 日本 -> 非日本 -> 代理` 的顺序优先匹配。启用地区自动选择时，所有地区组均默认进入各自的自动选择组；日本与非日本策略组即使没有匹配节点也会保留，其空自动选择组通过 `empty-fallback: DIRECT` 统一回退，避免规则引用不存在的策略组。
 
 ## 自动更新
 

@@ -73,6 +73,49 @@ export function customizeScript(upstreamSource) {
     'regionDefinitions 尾部',
   );
 
+  const regionGroupOptionsAnchor =
+    'function createRegionGroup(name, icon, proxies) {\n' +
+    '  const generateRegionAutoSelectEnabled = ruleOptionsEnable.生成地区自动选择组;\n' +
+    '  const hideManualSelectGroupEnabled = ruleOptionsEnable.隐藏地区手动选择组;\n';
+  source = replaceOnce(
+    source,
+    regionGroupOptionsAnchor,
+    regionGroupOptionsAnchor +
+      '  const isGeographicRegion =\n' +
+      '    regionDefinitions.some((region) => region.name === name) || name === nonJapanRegionDefinition.name;\n',
+    '地区组默认自动选择标记',
+  );
+
+  const regionAutoSelectGroupAnchor = '        name: urlTestName,\n        proxies,\n';
+  source = replaceOnce(
+    source,
+    regionAutoSelectGroupAnchor,
+    regionAutoSelectGroupAnchor + "        ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),\n",
+    '地区自动选择组 DIRECT 兜底',
+  );
+
+  const regionSelectProxiesAnchor = '        proxies: [...proxies, urlTestName],\n';
+  source = replaceOnce(
+    source,
+    regionSelectProxiesAnchor,
+    '        proxies: isGeographicRegion ? [urlTestName, ...proxies] : [...proxies, urlTestName],\n' +
+      "        ...(isGeographicRegion && { 'default-selected': urlTestName }),\n",
+    '地区组默认自动选择策略',
+  );
+
+  const regionManualSelectAnchor =
+    '      name,\n      icon,\n      proxies,\n      hidden: hideManualSelectGroupEnabled,\n';
+  source = replaceOnce(
+    source,
+    regionManualSelectAnchor,
+    '      name,\n' +
+      '      icon,\n' +
+      '      proxies,\n' +
+      "      ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),\n" +
+      '      hidden: hideManualSelectGroupEnabled,\n',
+    '未生成自动选择组时的地区空组兜底',
+  );
+
   const providerCommonAnchor = '// 定义基础 Rule Providers\n';
   source = replaceOnce(
     source,
@@ -136,14 +179,13 @@ export function customizeScript(upstreamSource) {
       `  // --- ${CUSTOMIZATION_MARKER}：日本节点的严格补集 ---\n` +
       '  const japanProxyNames = new Set(regionGroups[japanRegionName]);\n' +
       '  const nonJapanProxies = allProxies.map((proxy) => proxy.name).filter((name) => !japanProxyNames.has(name));\n' +
-      "  const nonJapanGroupProxies = nonJapanProxies.length > 0 ? nonJapanProxies : ['REJECT'];\n" +
       '  generatedRegionGroups.push(\n' +
-      '    ...createRegionGroup(nonJapanRegionDefinition.name, nonJapanRegionDefinition.icon, nonJapanGroupProxies),\n' +
+      '    ...createRegionGroup(nonJapanRegionDefinition.name, nonJapanRegionDefinition.icon, nonJapanProxies),\n' +
       '  );\n\n' +
-      '  // 日本组被规则直接引用；无日本节点时追加 REJECT 兜底组，但不让它成为“默认代理”的首选项\n' +
+      '  // 日本组被规则直接引用；无日本节点时追加由 empty-fallback 兜底的空组\n' +
       '  if (japanProxyNames.size === 0) {\n' +
       '    const japanRegionDefinition = regionDefinitions.find((region) => region.name === japanRegionName);\n' +
-      "    generatedRegionGroups.push(...createRegionGroup(japanRegionName, japanRegionDefinition.icon, ['REJECT']));\n" +
+      '    generatedRegionGroups.push(...createRegionGroup(japanRegionName, japanRegionDefinition.icon, []));\n' +
       '  }\n\n' +
       '  if (otherProxies.length > 0) {',
     'buildRegionGroups 非日本组',
@@ -164,8 +206,7 @@ export function customizeScript(upstreamSource) {
     '默认代理基础组顺序',
   );
 
-  const defaultProxyListAnchor =
-    '    proxies: [...groupNamesOfSelect, ...baseGroupNames, ...customGroupNames],\n';
+  const defaultProxyListAnchor = '    proxies: [...groupNamesOfSelect, ...baseGroupNames, ...customGroupNames],\n';
   source = replaceOnce(
     source,
     defaultProxyListAnchor,
@@ -198,8 +239,10 @@ export function customizeScript(upstreamSource) {
     'CustomRules/JP.yaml',
     'CustomRules/NoJP.yaml',
     "name: '非日本'",
-    "nonJapanProxies.length > 0 ? nonJapanProxies : ['REJECT']",
-    "createRegionGroup(japanRegionName, japanRegionDefinition.icon, ['REJECT'])",
+    'regionDefinitions.some((region) => region.name === name) || name === nonJapanRegionDefinition.name',
+    "...(isGeographicRegion && { 'empty-fallback': 'DIRECT' })",
+    "...(isGeographicRegion && { 'default-selected': urlTestName })",
+    'createRegionGroup(japanRegionName, japanRegionDefinition.icon, [])',
     "const defaultProxyBaseGroupOrder = ['自动选择', '手动选择', '负载均衡'];",
     'proxies: [...defaultProxyBaseGroupNames, ...groupNamesOfSelect, ...customGroupNames]',
     "'default-selected': '直连'",
@@ -303,6 +346,44 @@ export function customizeSingMixScript(upstreamSource) {
     'sing-mix main 组',
   );
 
+  const addConditionAnchor = '    if (name && proxies.length) {';
+  source = replaceOnce(
+    source,
+    addConditionAnchor,
+    '    const hasEmptyFallback = Boolean(extra["empty-fallback"]);\n' +
+      '    if (name && (proxies.length || hasEmptyFallback)) {',
+    'sing-mix 允许 empty-fallback 空组',
+  );
+
+  const addRegionGroupAnchor = '  };\n\n  add("fcm", "select", ["DIRECT"], "Google_Search.png", { hidden: true });';
+  source = replaceOnce(
+    source,
+    addRegionGroupAnchor,
+    '  };\n\n' +
+      '  const addRegionGroup = (name, proxies, icon) => {\n' +
+      '    const autoSelectName = `URL Test - ${name}`;\n' +
+      '    add(autoSelectName, "url-test", proxies, icon, {\n' +
+      '      ...SETTINGS.URL_TEST_EXTRA,\n' +
+      '      "empty-fallback": "DIRECT"\n' +
+      '    });\n' +
+      '    add(name, "select", [autoSelectName, ...proxies], icon, {\n' +
+      '      "default-selected": autoSelectName\n' +
+      '    });\n' +
+      '  };\n\n' +
+      '  add("fcm", "select", ["DIRECT"], "Google_Search.png", { hidden: true });',
+    'sing-mix 统一地区组构造器',
+  );
+
+  const regionGroupsAnchor =
+    '    add(`URL Test - ${region.name}`, "url-test", region.proxies, region.icon, SETTINGS.URL_TEST_EXTRA);\n' +
+    '    add(region.name, "select", [`URL Test - ${region.name}`, ...region.proxies], region.icon);';
+  source = replaceOnce(
+    source,
+    regionGroupsAnchor,
+    '    addRegionGroup(region.name, region.proxies, region.icon);',
+    'sing-mix 地区组默认自动选择策略',
+  );
+
   const customGroupsAnchor = '  // Other 组\n';
   source = replaceOnce(
     source,
@@ -318,14 +399,9 @@ export function customizeSingMixScript(upstreamSource) {
       '    add("tg", "select", ["REJECT"], "Telegram.png");\n' +
       '  }\n\n' +
       '  if (!activeRegionNameSet.has("JP")) {\n' +
-      '    add("JP", "select", ["REJECT"], "Japan.png");\n' +
+      '    addRegionGroup("JP", [], "Japan.png");\n' +
       '  }\n\n' +
-      '  if (nonJapanNames.length) {\n' +
-      '    add("URL Test - 非日本", "url-test", nonJapanNames, "World_Map.png", SETTINGS.URL_TEST_EXTRA);\n' +
-      '    add("非日本", "select", ["URL Test - 非日本", ...nonJapanNames], "World_Map.png");\n' +
-      '  } else {\n' +
-      '    add("非日本", "select", ["REJECT"], "World_Map.png");\n' +
-      '  }\n\n' +
+      '  addRegionGroup("非日本", nonJapanNames, "World_Map.png");\n\n' +
       customGroupsAnchor,
     'sing-mix 自定义地区组',
   );
@@ -395,8 +471,12 @@ export function customizeSingMixScript(upstreamSource) {
     'add("main", "select", ["REJECT"], "Available.png")',
     'add("ai", "select", ["REJECT"], "ChatGPT.png")',
     'add("tg", "select", ["REJECT"], "Telegram.png")',
-    'add("JP", "select", ["REJECT"], "Japan.png")',
-    'add("非日本", "select", ["REJECT"], "World_Map.png")',
+    'const hasEmptyFallback = Boolean(extra["empty-fallback"])',
+    'const addRegionGroup = (name, proxies, icon) =>',
+    '"empty-fallback": "DIRECT"',
+    '"default-selected": autoSelectName',
+    'addRegionGroup("JP", [], "Japan.png")',
+    'addRegionGroup("非日本", nonJapanNames, "World_Map.png")',
   ];
   for (const fragment of requiredFragments) {
     if (!source.includes(fragment)) {

@@ -589,7 +589,7 @@ proxy-groups:
     url: https://www.apple.com/library/test/success.html
     lazy: true
     max-failed-times: 3
-    empty-fallback: REJECT
+    empty-fallback: DIRECT
     type: url-test
     tolerance: 50
     exclude-type: DIRECT
@@ -607,10 +607,10 @@ proxy-groups:
     url: https://www.apple.com/library/test/success.html
     lazy: true
     max-failed-times: 3
-    empty-fallback: REJECT
     type: select
     name: 美国
     icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/United_States.png
+    default-selected: 美国-自动选择
     proxies:
       - 美国-自动选择
     filter: (?i)(🇺🇸|美国|美國|United[ _-]?States|\bUSA?\b|洛杉矶|洛杉磯|圣何塞|聖何塞|西雅图|西雅圖|纽约|紐約|达拉斯|達拉斯|芝加哥|凤凰城|鳳凰城|Los[ _-]?Angeles|San[ _-]?Jose|Seattle|New[ _-]?York|Dallas|Chicago)
@@ -625,7 +625,7 @@ proxy-groups:
     url: https://www.apple.com/library/test/success.html
     lazy: true
     max-failed-times: 3
-    empty-fallback: REJECT
+    empty-fallback: DIRECT
     type: url-test
     tolerance: 50
     exclude-type: DIRECT
@@ -643,10 +643,10 @@ proxy-groups:
     url: https://www.apple.com/library/test/success.html
     lazy: true
     max-failed-times: 3
-    empty-fallback: REJECT
     type: select
     name: 非日本
     icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/World_Map.png
+    default-selected: 非日本-自动选择
     proxies:
       - 非日本-自动选择
     exclude-filter: (?i)(🇯🇵|日本|Japan|\bJP(N)?\b|东京|東京|大阪|埼玉|横滨|橫濱|Tokyo|Osaka|Saitama|Yokohama)
@@ -661,7 +661,7 @@ proxy-groups:
     url: https://www.apple.com/library/test/success.html
     lazy: true
     max-failed-times: 3
-    empty-fallback: REJECT
+    empty-fallback: DIRECT
     type: url-test
     tolerance: 50
     exclude-type: DIRECT
@@ -679,12 +679,11 @@ proxy-groups:
     url: https://www.apple.com/library/test/success.html
     lazy: true
     max-failed-times: 3
-    empty-fallback: REJECT
     type: select
     name: 日本
     icon: https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Japan.png
+    default-selected: 日本-自动选择
     proxies:
-      - REJECT
       - 日本-自动选择
     filter: (?i)(🇯🇵|日本|Japan|\bJP(N)?\b|东京|東京|大阪|埼玉|横滨|橫濱|Tokyo|Osaka|Saitama|Yokohama)
     use:

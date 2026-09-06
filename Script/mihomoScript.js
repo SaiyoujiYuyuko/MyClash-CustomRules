@@ -880,6 +880,8 @@ function filterAndNormalizeProxies(config) {
 function createRegionGroup(name, icon, proxies) {
   const generateRegionAutoSelectEnabled = ruleOptionsEnable.生成地区自动选择组;
   const hideManualSelectGroupEnabled = ruleOptionsEnable.隐藏地区手动选择组;
+  const isGeographicRegion =
+    regionDefinitions.some((region) => region.name === name) || name === nonJapanRegionDefinition.name;
 
   if (generateRegionAutoSelectEnabled) {
     const urlTestName = `${name}-自动选择`;
@@ -888,12 +890,14 @@ function createRegionGroup(name, icon, proxies) {
         ...urlTestBaseOption,
         name: urlTestName,
         proxies,
+        ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),
       },
       {
         ...selectBaseOption,
         name,
         icon,
-        proxies: [...proxies, urlTestName],
+        proxies: isGeographicRegion ? [urlTestName, ...proxies] : [...proxies, urlTestName],
+        ...(isGeographicRegion && { 'default-selected': urlTestName }),
         hidden: hideManualSelectGroupEnabled,
       },
     ];
@@ -904,6 +908,7 @@ function createRegionGroup(name, icon, proxies) {
       name,
       icon,
       proxies,
+      ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),
       hidden: hideManualSelectGroupEnabled,
     },
   ];
@@ -939,15 +944,14 @@ function buildRegionGroups(filteredProxies, customProxies) {
   // --- CustomRules 自动同步定制：日本节点的严格补集 ---
   const japanProxyNames = new Set(regionGroups[japanRegionName]);
   const nonJapanProxies = allProxies.map((proxy) => proxy.name).filter((name) => !japanProxyNames.has(name));
-  const nonJapanGroupProxies = nonJapanProxies.length > 0 ? nonJapanProxies : ['REJECT'];
   generatedRegionGroups.push(
-    ...createRegionGroup(nonJapanRegionDefinition.name, nonJapanRegionDefinition.icon, nonJapanGroupProxies),
+    ...createRegionGroup(nonJapanRegionDefinition.name, nonJapanRegionDefinition.icon, nonJapanProxies),
   );
 
-  // 日本组被规则直接引用；无日本节点时追加 REJECT 兜底组，但不让它成为“默认代理”的首选项
+  // 日本组被规则直接引用；无日本节点时追加由 empty-fallback 兜底的空组
   if (japanProxyNames.size === 0) {
     const japanRegionDefinition = regionDefinitions.find((region) => region.name === japanRegionName);
-    generatedRegionGroups.push(...createRegionGroup(japanRegionName, japanRegionDefinition.icon, ['REJECT']));
+    generatedRegionGroups.push(...createRegionGroup(japanRegionName, japanRegionDefinition.icon, []));
   }
 
   if (otherProxies.length > 0) {
