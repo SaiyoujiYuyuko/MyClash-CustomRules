@@ -68,6 +68,7 @@ const prefixRules = [
   'RULE-SET,private,直连',
 
   // 国内直连
+  'RULE-SET,geolocation-cn,直连',
   'RULE-SET,games_cn,直连', // 已包含 steam 下载域名
   'RULE-SET,epicgames,直连',
   'RULE-SET,nvidia_cn,直连',
@@ -1236,7 +1237,7 @@ const commonDnsRegex = new RegExp(
 );
 
 // 国内外 DNS 定义
-const chinaDNS = ['223.5.5.5', '119.29.29.29'];
+const chinaDNS = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
 const chinaDohDNS = ['https://223.5.5.5/dns-query#DIRECT', 'https://1.12.12.12/dns-query#DIRECT'];
 const foreignDNS = ['https://cloudflare-dns.com/dns-query#默认代理', 'https://dns.google/dns-query#默认代理'];
 
@@ -1337,21 +1338,24 @@ function applyHostsToProxies(proxies, hosts) {
 }
 
 /**
- * 剥离 DNS 地址的 # 策略组后缀；# 后为 direct（忽略大小写与首尾空白，可带 & 参数）时整条保留，
- * 避免误保留 directxxx 等策略组名引用
+ * 剥离 DNS 地址的 # 策略组后缀；
+ * 参数包含 direct 或 直连 时，强制改为 #DIRECT
  */
 function stripDnsSuffix(dns) {
   const str = String(dns);
   const hashIndex = str.indexOf('#');
   if (hashIndex === -1) return str;
 
+  const prefix = str.slice(0, hashIndex).trim();
+
   const suffix = str
     .slice(hashIndex + 1)
     .toLowerCase()
     .trim();
-  if (suffix === 'direct' || suffix.startsWith('direct&')) return str;
 
-  return str.slice(0, hashIndex);
+  if (suffix.includes('direct') || suffix.includes('直连')) return prefix + '#DIRECT';
+
+  return prefix;
 }
 
 /**
@@ -1359,6 +1363,54 @@ function stripDnsSuffix(dns) {
  */
 function isIpAddress(server) {
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(server) || server.includes(':');
+}
+
+/**
+ * 简化节点域名策略：将相同 DNS 的节点域名按后缀归类，至少三段的域名可合并为 +. 后缀形式
+ */
+function simplifyDomainPolicy(policy) {
+  const groups = new Map();
+
+  for (const [domain, dns] of Object.entries(policy)) {
+    const dnsKey = JSON.stringify(Array.isArray(dns) ? [...dns].sort() : dns);
+
+    if (domain.startsWith('+.') || domain.startsWith('.') || domain.includes('*')) {
+      groups.set(`keep:${domain}`, [{ domain, dns, dnsKey }]);
+      continue;
+    }
+
+    const parts = domain.split('.');
+
+    if (parts.length < 3) {
+      groups.set(`keep:${domain}`, [{ domain, dns, dnsKey }]);
+      continue;
+    }
+
+    const suffix = parts.slice(-2).join('.');
+
+    if (!groups.has(suffix)) {
+      groups.set(suffix, []);
+    }
+
+    groups.get(suffix).push({ domain, dns, dnsKey });
+  }
+
+  const result = {};
+
+  for (const [suffix, domains] of groups) {
+    const firstDnsKey = domains[0].dnsKey;
+    const sameDns = domains.every(({ dnsKey }) => dnsKey === firstDnsKey);
+
+    if (domains.length >= 2 && sameDns) {
+      result[`+.${suffix}`] = domains[0].dns;
+    } else {
+      for (const { domain, dns } of domains) {
+        result[domain] = dns;
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -1407,24 +1459,26 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
     ),
   ];
 
-  const proxyServerPolicy = {};
+  const matchedProxyPolicy = {};
   for (const [domain, dns] of Object.entries({
     ...originalDnsConfig['nameserver-policy'],
     ...originalDnsConfig['proxy-server-nameserver-policy'],
   })) {
     if (!matchDomainPattern(domain, proxyDomains)) continue;
 
-    const value = Array.isArray(dns) ? dns.map(stripDnsSuffix).filter((d) => d.length > 0) : stripDnsSuffix(dns);
-    if (Array.isArray(value) && value.length === 0) continue;
+    const stripedDns = Array.isArray(dns) ? dns.map(stripDnsSuffix).filter((d) => d.length > 0) : stripDnsSuffix(dns);
+    if (Array.isArray(stripedDns) && stripedDns.length === 0) continue;
 
-    proxyServerPolicy[domain] = value;
+    matchedProxyPolicy[domain] = stripedDns;
   }
 
-  if (privateDNS.length > 0 && Object.keys(proxyServerPolicy).length === 0) {
+  if (privateDNS.length > 0 && Object.keys(matchedProxyPolicy).length === 0) {
     for (const domain of proxyDomains) {
-      proxyServerPolicy[domain] = privateDNS;
+      matchedProxyPolicy[domain] = privateDNS;
     }
   }
+
+  const proxyServerPolicy = simplifyDomainPolicy(matchedProxyPolicy);
 
   const originalFakeIpFilter = originalDnsConfig['fake-ip-filter'] || [];
   const proxyFakeIpFilter = originalFakeIpFilter.filter((pattern) => {
@@ -1547,7 +1601,6 @@ function main(config) {
 
     // 兜底规则
     'RULE-SET,geolocation-!cn,默认代理',
-    'RULE-SET,geolocation-cn,直连',
     'RULE-SET,cn_ip,直连',
     'RULE-SET,private_ip,直连',
     'MATCH,漏网之鱼',
