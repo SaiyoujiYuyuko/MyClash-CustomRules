@@ -3,6 +3,7 @@ payload:
   - DOMAIN,linux.do
   - DOMAIN,ymawv.la
   - DOMAIN-SUFFIX,435462.xyz
+  - DOMAIN-SUFFIX,cfnav.me
   #sites
   - DOMAIN,anyrouter.top
   - DOMAIN,aihub.top
