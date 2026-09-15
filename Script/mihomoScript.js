@@ -33,7 +33,8 @@ const ruleOptionsEnable = {
   Steam: true, // Steam游戏平台
   TikTok: true, // TikTok视频平台
   Twitter: true, // Twitter社交平台
-  Instagram: true, // Instagram社交平台
+  Meta: true, // Meta服务
+  Line: true, // Line通讯软件
   Netflix: true, // Netflix视频平台
   Emby: true, // Emby媒体服务
   PikPak: true, // PikPak网盘服务
@@ -596,18 +597,38 @@ const serviceConfigs = [
     rules: ['RULE-SET,twitter,Twitter', 'RULE-SET,twitter_ip,Twitter,no-resolve'],
   },
   {
-    name: 'Instagram',
+    name: 'Meta',
     baseOption: selectBaseOption,
     providers: {
-      instagram: {
+      meta: {
         ...ruleProviderCommonDomain,
-        url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/instagram.mrs',
-        path: './ruleset/instagram.mrs',
-        'path-in-bundle': 'geo/geosite/instagram.mrs',
+        url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/meta.mrs',
+        path: './ruleset/meta.mrs',
+        'path-in-bundle': 'geo/geosite/meta.mrs',
+      },
+      facebook_ip: {
+        ...ruleProviderCommonIpcidr,
+        url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/facebook.mrs',
+        path: './ruleset/facebook_ip.mrs',
+        'path-in-bundle': 'geo/geoip/facebook.mrs',
       },
     },
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Instagram.png',
-    rules: ['RULE-SET,instagram,Instagram'],
+    icon: 'https://fastly.jsdelivr.net/gh/lige47/QuanX-icon-rule@main/icon/04ProxySoft/meta.png',
+    rules: ['RULE-SET,meta,Meta', 'RULE-SET,facebook_ip,Meta,no-resolve'],
+  },
+  {
+    name: 'Line',
+    baseOption: selectBaseOption,
+    providers: {
+      line: {
+        ...ruleProviderCommonDomain,
+        url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/line.mrs',
+        path: './ruleset/line.mrs',
+        'path-in-bundle': 'geo/geosite/line.mrs',
+      },
+    },
+    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Line.png',
+    rules: ['RULE-SET,line,Line'],
   },
   {
     name: 'Netflix',
@@ -1253,11 +1274,8 @@ const commonDnsRegex = new RegExp(
 // 国内外 DNS 定义
 const chinaDNS = ['system', '223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
 const foreignDNS = ['https://cloudflare-dns.com/dns-query#默认代理', 'https://dns.google/dns-query#默认代理'];
-const chinaDohDNS = [
-  'https://223.5.5.5/dns-query#DIRECT',
-  'https://1.12.12.12/dns-query#DIRECT',
-  'https://114.114.114.114/dns-query#DIRECT',
-];
+const defaultDNS = ['114.114.114.114#DIRECT', 'tls://223.5.5.5#DIRECT', 'https://1.12.12.12#DIRECT'];
+const proxyServerDNS = ['114.114.114.114#DIRECT', 'tls://223.5.5.5#DIRECT', 'https://doh.pub/dns-query#DIRECT'];
 
 /**
  * hosts 匹配优先级：精确 > +. > . > *（同级按出现顺序）
@@ -1525,11 +1543,11 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
       ...(ruleOptionsEnable['FCM'] ? ['rule-set:googlefcm'] : []),
       ...proxyFakeIpFilter,
     ],
-    'proxy-server-nameserver': chinaDohDNS,
+    'default-nameserver': defaultDNS,
+    'proxy-server-nameserver': proxyServerDNS,
     ...(Object.keys(proxyServerPolicy).length > 0 && {
       'proxy-server-nameserver-policy': proxyServerPolicy,
     }),
-    'default-nameserver': chinaDohDNS,
     nameserver: foreignDNS,
     'nameserver-policy': {
       'rule-set:cn': chinaDNS,
@@ -1538,6 +1556,7 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
   };
 
   const hosts = {
+    'doh.pub': ['1.12.12.12', '120.53.53.53'],
     'cloudflare-dns.com': ['1.1.1.1', '1.0.0.1'],
     'dns.google': ['8.8.8.8', '8.8.4.4'],
 
@@ -1609,7 +1628,7 @@ function main(config) {
 
   newConfig['tun'] = {
     enable: true,
-    stack: 'system',
+    stack: 'mips',
     'auto-route': true,
     'strict-route': true,
     'auto-redirect': true,
