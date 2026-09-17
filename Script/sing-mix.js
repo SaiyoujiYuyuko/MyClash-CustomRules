@@ -244,6 +244,7 @@ const buildRuleProviders = () => {
 
 const STATIC_RULES = [
   // --- CustomRules 自动同步定制（sing-mix）：高优先级规则 ---
+  "DOMAIN-SUFFIX,gov.cn,DIRECT",
   "RULE-SET,custom_direct,DIRECT",
   "RULE-SET,custom_jp,JP",
   "RULE-SET,custom_nojp,非日本",
@@ -402,7 +403,7 @@ const buildProxyGroups = ({
 
   const addRegionGroup = (name, proxies, icon) => {
     const autoSelectName = `URL Test - ${name}`;
-    add(autoSelectName, "url-test", proxies, icon, {
+    add(autoSelectName, "url-test", proxies.length ? proxies : ["DIRECT"], icon, {
       ...SETTINGS.URL_TEST_EXTRA,
       "empty-fallback": "DIRECT"
     });
@@ -531,18 +532,7 @@ const removeGeoDataConfig = (cfg) => {
 };
 
 const applySniffer = (cfg) => {
-  cfg.sniffer = {
-    ...(cfg.sniffer || {}),
-    enable: true,
-    "force-dns-mapping": true,
-    "parse-pure-ip": true,
-    "override-destination": true,
-    sniff: {
-      HTTP: { ports: [80, "8080-8880"], "override-destination": true },
-      TLS: { ports: [443, 8443] },
-      QUIC: { ports: [443, 8443] }
-    }
-  };
+  cfg.sniffer = buildCustomSniffer(cfg.sniffer);
 };
 
 const applyTun = (cfg) => {
@@ -562,12 +552,11 @@ const applyDns = (cfg) => {
   const fakeIpFilterFromCfg = Array.isArray(dns["fake-ip-filter"]) ? dns["fake-ip-filter"] : [];
 
   const chinaDNS = [
-    "system",
-    "https://dns.alidns.com/dns-query",
-    "https://doh.pub/dns-query"
+    "https://dns.alidns.com/dns-query#DIRECT",
+    "https://doh.pub/dns-query#DIRECT"
   ];
 
-  const foreignDNS = ["https://1.1.1.1/dns-query#main"];
+  const foreignDNS = ["https://1.1.1.1/dns-query#main", "https://dns.google/dns-query#main"];
 
   const directRuleSetsForChinaDNS = [
     "rule-set:cn",
@@ -612,6 +601,10 @@ const applyDns = (cfg) => {
     "fake-ip-filter": fullFakeIpFilter,
     "default-nameserver": ["223.5.5.5", "119.29.29.29"],
     nameserver: foreignDNS,
+    "nameserver-policy": {
+      "rule-set:cn": chinaDNS,
+      ...(dns["nameserver-policy"] || {})
+    },
     "proxy-server-nameserver": [
       "https://doh.pub/dns-query#DIRECT",
       "https://dns.alidns.com/dns-query#DIRECT"
@@ -632,7 +625,7 @@ const applyProfile = (cfg) => {
   cfg.profile = {
     ...(cfg.profile || {}),
     "store-selected": true,
-    "store-fake-ip": false
+    "store-fake-ip": true
   };
 };
 
@@ -715,7 +708,63 @@ function main(config) {
   applySniffer(config);
   applyTun(config);
   applyDns(config);
+  applyCustomDns(config);
   applyProfile(config);
 
   return config;
+}
+
+// --- CustomRules 自动同步定制：DNS 与嗅探兼容设置 ---
+function buildCustomSniffer(original = {}) {
+  original = original || {};
+  return {
+    ...original,
+    enable: original.enable ?? true,
+    'force-dns-mapping': original['force-dns-mapping'] ?? true,
+    'parse-pure-ip': original['parse-pure-ip'] ?? true,
+    'override-destination': original['override-destination'] ?? false,
+    sniff: {
+      ...original.sniff,
+      HTTP: { ports: [80, '8080-8880'], 'override-destination': true, ...original.sniff?.HTTP },
+      TLS: { ports: [443, 8443], ...original.sniff?.TLS },
+      QUIC: { ports: [443, 8443], ...original.sniff?.QUIC },
+    },
+    'skip-domain': [
+      ...new Set(['+.gov.cn', '+.oray.com', 'Mijia Cloud', '+.push.apple.com', ...(original['skip-domain'] || [])]),
+    ],
+  };
+}
+
+function applyCustomDns(config) {
+  const dns = config.dns;
+  dns['prefer-h3'] = false;
+  dns['respect-rules'] = true;
+  dns['fake-ip-filter-mode'] = 'blacklist';
+  // 政务站点可能只有当前内网 DNS 能解析；查询和 DIRECT 出口重解析均遵循系统 DNS 策略。
+  dns['nameserver-policy'] = {
+    ...dns['nameserver-policy'],
+    '+.gov.cn': ['system'],
+  };
+  dns['direct-nameserver-follow-policy'] = true;
+  // 保留上游动态规则集和节点域名例外，仅补充无需远端规则集的基础兼容项。
+  dns['fake-ip-filter'] = [
+    ...new Set([
+      ...(dns['fake-ip-filter'] || []),
+      '+.gov.cn',
+      'localhost',
+      '+.localhost',
+      '+.lan',
+      '+.local',
+      '+.msftconnecttest.com',
+      '+.msftncsi.com',
+      'time.*.com',
+      'time.*.gov',
+      'time.*.edu.cn',
+      'time.*.apple.com',
+      'ntp.*.com',
+      '+.pool.ntp.org',
+      '+.stun.*.*',
+      '+.stun.*.*.*',
+    ]),
+  ];
 }

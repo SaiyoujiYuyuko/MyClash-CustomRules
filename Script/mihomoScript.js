@@ -60,6 +60,7 @@ const ruleOptionsEnable = {
 // 定义前置规则
 const prefixRules = [
   // --- CustomRules 自动同步定制：高优先级规则 ---
+  'DOMAIN-SUFFIX,gov.cn,DIRECT',
   'RULE-SET,custom_direct,直连',
   'RULE-SET,custom_jp,日本',
   'RULE-SET,custom_nojp,非日本',
@@ -924,7 +925,7 @@ function createRegionGroup(name, icon, proxies) {
       {
         ...urlTestBaseOption,
         name: urlTestName,
-        proxies,
+        proxies: isGeographicRegion && proxies.length === 0 ? ['DIRECT'] : proxies,
         ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),
       },
       {
@@ -942,7 +943,7 @@ function createRegionGroup(name, icon, proxies) {
       ...selectBaseOption,
       name,
       icon,
-      proxies,
+      proxies: isGeographicRegion && proxies.length === 0 ? ['DIRECT'] : proxies,
       ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),
       hidden: hideManualSelectGroupEnabled,
     },
@@ -983,7 +984,7 @@ function buildRegionGroups(filteredProxies, customProxies) {
     ...createRegionGroup(nonJapanRegionDefinition.name, nonJapanRegionDefinition.icon, nonJapanProxies),
   );
 
-  // 日本组被规则直接引用；无日本节点时追加由 empty-fallback 兜底的空组
+  // 日本组被规则直接引用；无日本节点时追加含 DIRECT 候选的兜底组
   if (japanProxyNames.size === 0) {
     const japanRegionDefinition = regionDefinitions.find((region) => region.name === japanRegionName);
     generatedRegionGroups.push(...createRegionGroup(japanRegionName, japanRegionDefinition.icon, []));
@@ -1273,7 +1274,7 @@ const commonDnsRegex = new RegExp(
 );
 
 // 国内外 DNS 定义
-const chinaDNS = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
+const chinaDNS = ['https://dns.alidns.com/dns-query#DIRECT', 'https://doh.pub/dns-query#DIRECT'];
 const foreignDNS = ['https://cloudflare-dns.com/dns-query#默认代理', 'https://dns.google/dns-query#默认代理'];
 const defaultDNS = ['114.114.114.114#DIRECT', 'tls://223.5.5.5#DIRECT', 'https://1.12.12.12/dns-query#DIRECT'];
 const proxyServerDNS = ['114.114.114.114#DIRECT', 'tls://223.5.5.5#DIRECT', 'https://doh.pub/dns-query#DIRECT'];
@@ -1659,5 +1660,63 @@ function main(config) {
     'MATCH,漏网之鱼',
   ];
 
+  newConfig.sniffer = buildCustomSniffer(config.sniffer);
+  applyCustomDns(newConfig);
+
   return newConfig;
+}
+
+// --- CustomRules 自动同步定制：DNS 与嗅探兼容设置 ---
+function buildCustomSniffer(original = {}) {
+  original = original || {};
+  return {
+    ...original,
+    enable: original.enable ?? true,
+    'force-dns-mapping': original['force-dns-mapping'] ?? true,
+    'parse-pure-ip': original['parse-pure-ip'] ?? true,
+    'override-destination': original['override-destination'] ?? false,
+    sniff: {
+      ...original.sniff,
+      HTTP: { ports: [80, '8080-8880'], 'override-destination': true, ...original.sniff?.HTTP },
+      TLS: { ports: [443, 8443], ...original.sniff?.TLS },
+      QUIC: { ports: [443, 8443], ...original.sniff?.QUIC },
+    },
+    'skip-domain': [
+      ...new Set(['+.gov.cn', '+.oray.com', 'Mijia Cloud', '+.push.apple.com', ...(original['skip-domain'] || [])]),
+    ],
+  };
+}
+
+function applyCustomDns(config) {
+  const dns = config.dns;
+  dns['prefer-h3'] = false;
+  dns['respect-rules'] = true;
+  dns['fake-ip-filter-mode'] = 'blacklist';
+  // 政务站点可能只有当前内网 DNS 能解析；查询和 DIRECT 出口重解析均遵循系统 DNS 策略。
+  dns['nameserver-policy'] = {
+    ...dns['nameserver-policy'],
+    '+.gov.cn': ['system'],
+  };
+  dns['direct-nameserver-follow-policy'] = true;
+  // 保留上游动态规则集和节点域名例外，仅补充无需远端规则集的基础兼容项。
+  dns['fake-ip-filter'] = [
+    ...new Set([
+      ...(dns['fake-ip-filter'] || []),
+      '+.gov.cn',
+      'localhost',
+      '+.localhost',
+      '+.lan',
+      '+.local',
+      '+.msftconnecttest.com',
+      '+.msftncsi.com',
+      'time.*.com',
+      'time.*.gov',
+      'time.*.edu.cn',
+      'time.*.apple.com',
+      'ntp.*.com',
+      '+.pool.ntp.org',
+      '+.stun.*.*',
+      '+.stun.*.*.*',
+    ]),
+  ];
 }

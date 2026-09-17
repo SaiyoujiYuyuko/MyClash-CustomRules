@@ -102,6 +102,7 @@ function assertCustomProviders(config, pathPrefix) {
 assertCustomProviders(output, './ruleset');
 
 const expectedRules = [
+  'DOMAIN-SUFFIX,gov.cn,DIRECT',
   'RULE-SET,custom_direct,直连',
   'RULE-SET,custom_jp,日本',
   'RULE-SET,custom_nojp,非日本',
@@ -111,7 +112,8 @@ assert.deepEqual(normalize(output.rules.slice(0, expectedRules.length)), expecte
 
 const groupNames = new Set(output['proxy-groups'].map((group) => group.name));
 for (const rule of expectedRules) {
-  assert.ok(groupNames.has(rule.split(',')[2]), `规则目标策略组不存在：${rule}`);
+  const target = rule.split(',')[2];
+  assert.ok(target === 'DIRECT' || groupNames.has(target), `规则目标策略组不存在：${rule}`);
 }
 
 const defaultProxyGroup = groupByName(output, '默认代理');
@@ -154,13 +156,13 @@ assert.ok(
 
 const onlyJapan = main({ proxies: [makeProxy('日本 ONLY', 'jp-only.example.com')] });
 assert.deepEqual(normalize(groupByName(onlyJapan, '日本-自动选择').proxies), ['🇯🇵 日本 ONLY']);
-assert.deepEqual(normalize(groupByName(onlyJapan, '非日本-自动选择').proxies), []);
+assert.deepEqual(normalize(groupByName(onlyJapan, '非日本-自动选择').proxies), ['DIRECT']);
 assert.equal(groupByName(onlyJapan, '非日本-自动选择')['empty-fallback'], 'DIRECT');
 assert.deepEqual(normalize(groupByName(onlyJapan, '非日本').proxies), ['非日本-自动选择']);
 assert.equal(groupByName(onlyJapan, '非日本')['default-selected'], '非日本-自动选择');
 
 const onlyNonJapan = main({ proxies: [makeProxy('美国 ONLY', 'us-only.example.com')] });
-assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本-自动选择').proxies), []);
+assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本-自动选择').proxies), ['DIRECT']);
 assert.equal(groupByName(onlyNonJapan, '日本-自动选择')['empty-fallback'], 'DIRECT');
 assert.deepEqual(normalize(groupByName(onlyNonJapan, '日本').proxies), ['日本-自动选择']);
 assert.equal(groupByName(onlyNonJapan, '日本')['default-selected'], '日本-自动选择');
@@ -182,12 +184,12 @@ try {
 
   const onlyJapanWithoutAuto = main({ proxies: [makeProxy('日本 ONLY', 'jp-only.example.com')] });
   assert.equal(groupByName(onlyJapanWithoutAuto, '非日本-自动选择'), undefined);
-  assert.deepEqual(normalize(groupByName(onlyJapanWithoutAuto, '非日本').proxies), []);
+  assert.deepEqual(normalize(groupByName(onlyJapanWithoutAuto, '非日本').proxies), ['DIRECT']);
   assert.equal(groupByName(onlyJapanWithoutAuto, '非日本')['empty-fallback'], 'DIRECT');
 
   const onlyNonJapanWithoutAuto = main({ proxies: [makeProxy('美国 ONLY', 'us-only.example.com')] });
   assert.equal(groupByName(onlyNonJapanWithoutAuto, '日本-自动选择'), undefined);
-  assert.deepEqual(normalize(groupByName(onlyNonJapanWithoutAuto, '日本').proxies), []);
+  assert.deepEqual(normalize(groupByName(onlyNonJapanWithoutAuto, '日本').proxies), ['DIRECT']);
   assert.equal(groupByName(onlyNonJapanWithoutAuto, '日本')['empty-fallback'], 'DIRECT');
 } finally {
   ruleOptionsEnable.生成地区自动选择组 = generateRegionAutoSelect;
@@ -213,6 +215,7 @@ const singMixOutput = singMixMain({
 assertCustomProviders(singMixOutput, './rules');
 
 const expectedSingMixRules = [
+  'DOMAIN-SUFFIX,gov.cn,DIRECT',
   'RULE-SET,custom_direct,DIRECT',
   'RULE-SET,custom_jp,JP',
   'RULE-SET,custom_nojp,非日本',
@@ -264,7 +267,7 @@ const singMixOnlyJapan = singMixMain({
   proxies: [makeProxy('日本 ONLY', 'jp-only-sing-mix.example.com')],
 });
 assert.deepEqual(normalize(groupByName(singMixOnlyJapan, 'URL Test - JP').proxies), ['日本 ONLY']);
-assert.deepEqual(normalize(groupByName(singMixOnlyJapan, 'URL Test - 非日本').proxies), []);
+assert.deepEqual(normalize(groupByName(singMixOnlyJapan, 'URL Test - 非日本').proxies), ['DIRECT']);
 assert.equal(groupByName(singMixOnlyJapan, 'URL Test - 非日本')['empty-fallback'], 'DIRECT');
 assert.deepEqual(normalize(groupByName(singMixOnlyJapan, '非日本').proxies), ['URL Test - 非日本']);
 assert.equal(groupByName(singMixOnlyJapan, '非日本')['default-selected'], 'URL Test - 非日本');
@@ -273,7 +276,7 @@ assert.ok(!groupByName(singMixOnlyJapan, 'main').proxies.includes('非日本'));
 const singMixOnlyNonJapan = singMixMain({
   proxies: [makeProxy('美国 ONLY', 'us-only-sing-mix.example.com')],
 });
-assert.deepEqual(normalize(groupByName(singMixOnlyNonJapan, 'URL Test - JP').proxies), []);
+assert.deepEqual(normalize(groupByName(singMixOnlyNonJapan, 'URL Test - JP').proxies), ['DIRECT']);
 assert.equal(groupByName(singMixOnlyNonJapan, 'URL Test - JP')['empty-fallback'], 'DIRECT');
 assert.deepEqual(normalize(groupByName(singMixOnlyNonJapan, 'JP').proxies), ['URL Test - JP']);
 assert.equal(groupByName(singMixOnlyNonJapan, 'JP')['default-selected'], 'URL Test - JP');
@@ -290,21 +293,19 @@ for (const groupName of ['main', 'ai', 'tg']) {
     `sing-mix 仅有信息节点时 ${groupName} 应使用 REJECT 兜底`,
   );
 }
-assert.deepEqual(normalize(groupByName(singMixOnlyInfo, 'URL Test - JP').proxies), []);
+assert.deepEqual(normalize(groupByName(singMixOnlyInfo, 'URL Test - JP').proxies), ['DIRECT']);
 assert.equal(groupByName(singMixOnlyInfo, 'URL Test - JP')['empty-fallback'], 'DIRECT');
 assert.deepEqual(normalize(groupByName(singMixOnlyInfo, 'JP').proxies), ['URL Test - JP']);
 assert.equal(groupByName(singMixOnlyInfo, 'JP')['default-selected'], 'URL Test - JP');
-assert.deepEqual(normalize(groupByName(singMixOnlyInfo, 'URL Test - 非日本').proxies), []);
+assert.deepEqual(normalize(groupByName(singMixOnlyInfo, 'URL Test - 非日本').proxies), ['DIRECT']);
 assert.equal(groupByName(singMixOnlyInfo, 'URL Test - 非日本')['empty-fallback'], 'DIRECT');
 assert.deepEqual(normalize(groupByName(singMixOnlyInfo, '非日本').proxies), ['URL Test - 非日本']);
 assert.equal(groupByName(singMixOnlyInfo, '非日本')['default-selected'], 'URL Test - 非日本');
 
 for (const config of [singMixOnlyJapan, singMixOnlyNonJapan, singMixOnlyInfo]) {
   assert.ok(
-    config['proxy-groups'].every(
-      (group) => Array.isArray(group.proxies) && (group.proxies.length > 0 || group['empty-fallback']),
-    ),
-    'sing-mix 空策略组必须配置 empty-fallback',
+    config['proxy-groups'].every((group) => Array.isArray(group.proxies) && group.proxies.length > 0),
+    'sing-mix 策略组必须有显式候选，empty-fallback 不能使空列表合法',
   );
 }
 
@@ -325,4 +326,128 @@ assert.ok(
 );
 assert.ok(Array.isArray(singMixOutput.rules) && singMixOutput.rules.length > 0, 'sing-mix rules 输出无效');
 
-console.log('两个定制脚本测试通过');
+// 覆写脚本需独立运行；验证 DNS 链路、例外保留和多次调用间的数据隔离。
+for (const [label, runMain, proxyGroup] of [
+  ['mihomo', main, '默认代理'],
+  ['sing-mix', singMixMain, 'main'],
+]) {
+  const makeInput = () => ({ proxies: [makeProxy('日本 DNS Test', 'node.private.example')] });
+  const config = runMain(makeInput());
+  assert.equal(config.dns['respect-rules'], true, label);
+  assert.equal(config.dns['prefer-h3'], false, label);
+  assert.equal(config.dns['use-hosts'], true, label);
+  assert.equal(config.dns['use-system-hosts'], true, label);
+  assert.equal(config.dns['fake-ip-filter-mode'], 'blacklist', label);
+  assert.equal(config.profile['store-fake-ip'], true, label);
+  assert.equal(config.dns.nameserver.length, 2, `${label} 应有两个国外解析器`);
+  for (const resolver of config.dns.nameserver) {
+    assert.ok(resolver.startsWith('https://') && resolver.endsWith(`#${proxyGroup}`), label);
+  }
+  for (const key of ['direct-nameserver', 'proxy-server-nameserver']) {
+    assert.ok(config.dns[key].length > 0, label);
+    assert.ok(
+      config.dns[key].every((resolver) => resolver.endsWith('#DIRECT')),
+      `${label} ${key} 不能依赖代理`,
+    );
+  }
+  assert.deepEqual(normalize(config.dns['nameserver-policy']['rule-set:cn']), [
+    'https://dns.alidns.com/dns-query#DIRECT',
+    'https://doh.pub/dns-query#DIRECT',
+  ]);
+  assert.equal(config.rules[0], 'DOMAIN-SUFFIX,gov.cn,DIRECT', `${label} 政务域名优先于所有自定义规则`);
+  assert.deepEqual(
+    normalize(config.dns['nameserver-policy']['+.gov.cn']),
+    ['system'],
+    `${label} 政务域名只使用系统 DNS，不能混入公共解析器`,
+  );
+  assert.equal(
+    config.dns['direct-nameserver-follow-policy'],
+    true,
+    `${label} DIRECT 出口重解析必须遵循 gov.cn 的系统 DNS 策略`,
+  );
+  assert.ok(config.dns['fake-ip-filter'].includes('+.gov.cn'), `${label} 政务域名返回真实 IP`);
+  assert.ok(config.sniffer['skip-domain'].includes('+.gov.cn'), `${label} 政务域名跳过嗅探`);
+  for (const pattern of ['+.lan', '+.local', '+.msftconnecttest.com', '+.pool.ntp.org', '+.stun.*.*']) {
+    assert.ok(config.dns['fake-ip-filter'].includes(pattern), `${label} 缺少 ${pattern}`);
+  }
+  for (const pattern of config.dns['fake-ip-filter']) {
+    if (!pattern.startsWith('rule-set:')) continue;
+    assert.ok(config['rule-providers'][pattern.slice(9)], `${label} DNS 引用不存在的规则集 ${pattern}`);
+  }
+  assert.equal(config.sniffer.enable, true, label);
+  assert.equal(config.sniffer['override-destination'], false, label);
+  assert.equal(config.sniffer.sniff.HTTP['override-destination'], true, label);
+  assert.deepEqual(normalize(config.sniffer.sniff.TLS.ports), [443, 8443]);
+  assert.deepEqual(normalize(config.sniffer.sniff.QUIC.ports), [443, 8443]);
+  assert.ok(config.sniffer['skip-domain'].includes('Mijia Cloud'), label);
+
+  const customSniffer = {
+    enable: false,
+    'parse-pure-ip': false,
+    'override-destination': true,
+    'skip-domain': ['+.internal.example', 'Mijia Cloud'],
+    'skip-dst-address': ['192.168.1.0/24'],
+    sniff: { TLS: { ports: [9443], 'override-destination': false } },
+  };
+  const before = normalize(customSniffer);
+  const overridden = runMain({ ...makeInput(), sniffer: customSniffer });
+  assert.equal(overridden.sniffer.enable, false, `${label} 保留显式关闭`);
+  assert.equal(overridden.sniffer['parse-pure-ip'], false, label);
+  assert.equal(overridden.sniffer['override-destination'], true, label);
+  assert.deepEqual(normalize(overridden.sniffer.sniff.TLS), before.sniff.TLS);
+  assert.deepEqual(normalize(overridden.sniffer['skip-dst-address']), before['skip-dst-address']);
+  assert.ok(overridden.sniffer['skip-domain'].includes('+.internal.example'), label);
+  assert.equal(overridden.sniffer['skip-domain'].filter((domain) => domain === 'Mijia Cloud').length, 1, label);
+  assert.deepEqual(normalize(customSniffer), before, `${label} 不修改输入嗅探对象`);
+  const conflictingDns = runMain({
+    ...makeInput(),
+    dns: {
+      'nameserver-policy': { '+.gov.cn': [`https://1.1.1.1/dns-query#${proxyGroup}`] },
+      'direct-nameserver-follow-policy': false,
+    },
+    sniffer: { 'skip-domain': ['+.gov.cn', '+.internal.example'] },
+  });
+  assert.deepEqual(
+    normalize(conflictingDns.dns['nameserver-policy']['+.gov.cn']),
+    ['system'],
+    `${label} 输入的同名 gov.cn DNS 策略不能恢复公共 DNS 解析`,
+  );
+  assert.equal(conflictingDns.dns['direct-nameserver-follow-policy'], true, label);
+  assert.equal(conflictingDns.sniffer['skip-domain'].filter((domain) => domain === '+.gov.cn').length, 1, label);
+  assert.ok(conflictingDns.sniffer['skip-domain'].includes('+.internal.example'), label);
+  overridden.dns['fake-ip-filter'].push('isolated.example');
+  overridden.sniffer['skip-domain'].push('isolated.example');
+  const next = runMain(makeInput());
+  assert.ok(!next.dns['fake-ip-filter'].includes('isolated.example'), label);
+  assert.ok(!next.sniffer['skip-domain'].includes('isolated.example'), label);
+}
+
+const privateDnsOutput = main({
+  proxies: [makeProxy('日本 Private DNS', 'node.private.example')],
+  dns: {
+    'proxy-server-nameserver': ['10.0.0.53'],
+    'proxy-server-nameserver-policy': { 'node.private.example': ['10.0.0.54'] },
+    'fake-ip-filter': ['node.private.example'],
+  },
+});
+assert.deepEqual(normalize(privateDnsOutput.dns['proxy-server-nameserver-policy']), {
+  'node.private.example': ['10.0.0.54'],
+});
+assert.ok(privateDnsOutput.dns['fake-ip-filter'].includes('node.private.example'));
+const singMixPrivateDns = singMixMain({
+  proxies: [makeProxy('日本 Private DNS', 'node.private.example')],
+  dns: {
+    'nameserver-policy': { '+.internal.example': ['10.0.0.53'] },
+    'proxy-server-nameserver-policy': { 'node.private.example': ['10.0.0.54'] },
+    'fake-ip-filter': ['+.internal.example'],
+  },
+});
+assert.deepEqual(normalize(singMixPrivateDns.dns['nameserver-policy']['+.internal.example']), ['10.0.0.53']);
+assert.deepEqual(normalize(singMixPrivateDns.dns['proxy-server-nameserver-policy']), {
+  'node.private.example': ['10.0.0.54'],
+});
+assert.ok(singMixPrivateDns.dns['fake-ip-filter'].includes('+.internal.example'));
+assert.equal(output.dns.ipv6, true, '保留 mihomo IPv6 默认值');
+assert.equal(singMixOutput.dns.ipv6, false, '保留 sing-mix IPv6 默认值');
+
+console.log('两个定制脚本测试通过（规则、地区组、DNS、sniffer）');

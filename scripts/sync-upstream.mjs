@@ -40,6 +40,65 @@ function replaceOnce(source, anchor, replacement, label) {
   return `${source.slice(0, firstIndex)}${replacement}${source.slice(firstIndex + anchor.length)}`;
 }
 
+// 序列化到两份独立覆写脚本中；不能依赖生成器作用域或 Node.js API。
+function buildCustomSniffer(original = {}) {
+  original = original || {};
+  return {
+    ...original,
+    enable: original.enable ?? true,
+    'force-dns-mapping': original['force-dns-mapping'] ?? true,
+    'parse-pure-ip': original['parse-pure-ip'] ?? true,
+    'override-destination': original['override-destination'] ?? false,
+    sniff: {
+      ...original.sniff,
+      HTTP: { ports: [80, '8080-8880'], 'override-destination': true, ...original.sniff?.HTTP },
+      TLS: { ports: [443, 8443], ...original.sniff?.TLS },
+      QUIC: { ports: [443, 8443], ...original.sniff?.QUIC },
+    },
+    'skip-domain': [
+      ...new Set(['+.gov.cn', '+.oray.com', 'Mijia Cloud', '+.push.apple.com', ...(original['skip-domain'] || [])]),
+    ],
+  };
+}
+
+function applyCustomDns(config) {
+  const dns = config.dns;
+  dns['prefer-h3'] = false;
+  dns['respect-rules'] = true;
+  dns['fake-ip-filter-mode'] = 'blacklist';
+  // 政务站点可能只有当前内网 DNS 能解析；查询和 DIRECT 出口重解析均遵循系统 DNS 策略。
+  dns['nameserver-policy'] = {
+    ...dns['nameserver-policy'],
+    '+.gov.cn': ['system'],
+  };
+  dns['direct-nameserver-follow-policy'] = true;
+  // 保留上游动态规则集和节点域名例外，仅补充无需远端规则集的基础兼容项。
+  dns['fake-ip-filter'] = [
+    ...new Set([
+      ...(dns['fake-ip-filter'] || []),
+      '+.gov.cn',
+      'localhost',
+      '+.localhost',
+      '+.lan',
+      '+.local',
+      '+.msftconnecttest.com',
+      '+.msftncsi.com',
+      'time.*.com',
+      'time.*.gov',
+      'time.*.edu.cn',
+      'time.*.apple.com',
+      'ntp.*.com',
+      '+.pool.ntp.org',
+      '+.stun.*.*',
+      '+.stun.*.*.*',
+    ]),
+  ];
+}
+
+function appendNetworkHelpers(source) {
+  return `${source.trimEnd()}\n\n// --- CustomRules 自动同步定制：DNS 与嗅探兼容设置 ---\n${buildCustomSniffer.toString()}\n\n${applyCustomDns.toString()}\n`;
+}
+
 export function customizeScript(upstreamSource) {
   let source = upstreamSource.replace(/\r\n?/g, '\n');
 
@@ -52,6 +111,7 @@ export function customizeScript(upstreamSource) {
     source,
     prefixAnchor,
     `${prefixAnchor}  // --- ${CUSTOMIZATION_MARKER}：高优先级规则 ---\n` +
+      "  'DOMAIN-SUFFIX,gov.cn,DIRECT',\n" +
       "  'RULE-SET,custom_direct,直连',\n" +
       "  'RULE-SET,custom_jp,日本',\n" +
       "  'RULE-SET,custom_nojp,非日本',\n" +
@@ -90,7 +150,9 @@ export function customizeScript(upstreamSource) {
   source = replaceOnce(
     source,
     regionAutoSelectGroupAnchor,
-    regionAutoSelectGroupAnchor + "        ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),\n",
+    '        name: urlTestName,\n' +
+      "        proxies: isGeographicRegion && proxies.length === 0 ? ['DIRECT'] : proxies,\n" +
+      "        ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),\n",
     '地区自动选择组 DIRECT 兜底',
   );
 
@@ -110,7 +172,7 @@ export function customizeScript(upstreamSource) {
     regionManualSelectAnchor,
     '      name,\n' +
       '      icon,\n' +
-      '      proxies,\n' +
+      "      proxies: isGeographicRegion && proxies.length === 0 ? ['DIRECT'] : proxies,\n" +
       "      ...(isGeographicRegion && { 'empty-fallback': 'DIRECT' }),\n" +
       '      hidden: hideManualSelectGroupEnabled,\n',
     '未生成自动选择组时的地区空组兜底',
@@ -182,7 +244,7 @@ export function customizeScript(upstreamSource) {
       '  generatedRegionGroups.push(\n' +
       '    ...createRegionGroup(nonJapanRegionDefinition.name, nonJapanRegionDefinition.icon, nonJapanProxies),\n' +
       '  );\n\n' +
-      '  // 日本组被规则直接引用；无日本节点时追加由 empty-fallback 兜底的空组\n' +
+      '  // 日本组被规则直接引用；无日本节点时追加含 DIRECT 候选的兜底组\n' +
       '  if (japanProxyNames.size === 0) {\n' +
       '    const japanRegionDefinition = regionDefinitions.find((region) => region.name === japanRegionName);\n' +
       '    generatedRegionGroups.push(...createRegionGroup(japanRegionName, japanRegionDefinition.icon, []));\n' +
@@ -253,7 +315,21 @@ export function customizeScript(upstreamSource) {
     }
   }
 
-  return source.endsWith('\n') ? source : `${source}\n`;
+  source = replaceOnce(
+    source,
+    "const chinaDNS = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];",
+    "const chinaDNS = ['https://dns.alidns.com/dns-query#DIRECT', 'https://doh.pub/dns-query#DIRECT'];",
+    'mihomo 国内 DoH',
+  );
+  source = replaceOnce(
+    source,
+    '  return newConfig;\n}',
+    '  newConfig.sniffer = buildCustomSniffer(config.sniffer);\n' +
+      '  applyCustomDns(newConfig);\n\n' +
+      '  return newConfig;\n}',
+    'mihomo DNS 与嗅探定制入口',
+  );
+  return appendNetworkHelpers(source);
 }
 
 export function customizeSingMixScript(upstreamSource) {
@@ -303,6 +379,7 @@ export function customizeSingMixScript(upstreamSource) {
     source,
     rulesAnchor,
     `${rulesAnchor}  // --- ${SING_MIX_CUSTOMIZATION_MARKER}：高优先级规则 ---\n` +
+      '  "DOMAIN-SUFFIX,gov.cn,DIRECT",\n' +
       '  "RULE-SET,custom_direct,DIRECT",\n' +
       '  "RULE-SET,custom_jp,JP",\n' +
       '  "RULE-SET,custom_nojp,非日本",\n' +
@@ -362,7 +439,7 @@ export function customizeSingMixScript(upstreamSource) {
     '  };\n\n' +
       '  const addRegionGroup = (name, proxies, icon) => {\n' +
       '    const autoSelectName = `URL Test - ${name}`;\n' +
-      '    add(autoSelectName, "url-test", proxies, icon, {\n' +
+      '    add(autoSelectName, "url-test", proxies.length ? proxies : ["DIRECT"], icon, {\n' +
       '      ...SETTINGS.URL_TEST_EXTRA,\n' +
       '      "empty-fallback": "DIRECT"\n' +
       '    });\n' +
@@ -484,7 +561,62 @@ export function customizeSingMixScript(upstreamSource) {
     }
   }
 
-  return source.endsWith('\n') ? source : `${source}\n`;
+  source = replaceOnce(
+    source,
+    '  const chinaDNS = [\n' +
+      '    "system",\n' +
+      '    "https://dns.alidns.com/dns-query",\n' +
+      '    "https://doh.pub/dns-query"\n' +
+      '  ];',
+    '  const chinaDNS = [\n' +
+      '    "https://dns.alidns.com/dns-query#DIRECT",\n' +
+      '    "https://doh.pub/dns-query#DIRECT"\n' +
+      '  ];',
+    'sing-mix 国内 DoH',
+  );
+  source = replaceOnce(
+    source,
+    '  const foreignDNS = ["https://1.1.1.1/dns-query#main"];',
+    '  const foreignDNS = ["https://1.1.1.1/dns-query#main", "https://dns.google/dns-query#main"];',
+    'sing-mix 国外 DoH 冗余',
+  );
+  source = replaceOnce(
+    source,
+    '    nameserver: foreignDNS,\n',
+    '    nameserver: foreignDNS,\n' +
+      '    "nameserver-policy": {\n' +
+      '      "rule-set:cn": chinaDNS,\n' +
+      '      ...(dns["nameserver-policy"] || {})\n' +
+      '    },\n',
+    'sing-mix 国内域名解析策略',
+  );
+  source = replaceOnce(
+    source,
+    'const applySniffer = (cfg) => {\n' +
+      '  cfg.sniffer = {\n' +
+      '    ...(cfg.sniffer || {}),\n' +
+      '    enable: true,\n' +
+      '    "force-dns-mapping": true,\n' +
+      '    "parse-pure-ip": true,\n' +
+      '    "override-destination": true,\n' +
+      '    sniff: {\n' +
+      '      HTTP: { ports: [80, "8080-8880"], "override-destination": true },\n' +
+      '      TLS: { ports: [443, 8443] },\n' +
+      '      QUIC: { ports: [443, 8443] }\n' +
+      '    }\n' +
+      '  };\n' +
+      '};',
+    'const applySniffer = (cfg) => {\n  cfg.sniffer = buildCustomSniffer(cfg.sniffer);\n};',
+    'sing-mix 嗅探定制入口',
+  );
+  source = replaceOnce(
+    source,
+    '  applyDns(config);',
+    '  applyDns(config);\n  applyCustomDns(config);',
+    'sing-mix DNS 定制入口',
+  );
+  source = replaceOnce(source, '    "store-fake-ip": false', '    "store-fake-ip": true', 'sing-mix fake-ip 持久化');
+  return appendNetworkHelpers(source);
 }
 
 function parseArguments(argv) {
