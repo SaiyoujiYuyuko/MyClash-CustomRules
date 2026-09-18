@@ -1,16 +1,16 @@
-/**
+/*
  * The sing-mix project
  * Sakyvo Present
  * 仓库地址：https://github.com/Sakyvo/sing-mix
  * 脚本链接：https://raw.githubusercontent.com/Sakyvo/sing-mix/refs/heads/main/sing-mix_origin
  * mihomo客户端推荐：https://github.com/appshubcc/Bettbox
- */
+*/
 
 // ====================
 // 0. 特殊处理
 // ====================
 
-// 强制直连
+/// 强制直连
 const BYPASS_DOMAINS = [
   "example.com", "example.org"
 ];
@@ -19,6 +19,9 @@ const BYPASS_DOMAINS = [
 const FORCE_PROXY_DOMAINS = [
   "test.com", "test.org"
 ];
+
+// 强制屏蔽
+const CUSTOM_BLOCK_DOMAINS = [ "blocked.com", "blocked.org" ];
 
 // 自定义节点过滤（用 | 分割)
 const CUSTOM_FILTER = /示例占位符1|示例占位符2|示例占位符3/i;
@@ -30,7 +33,7 @@ const SETTINGS = {
   ICON_BASE: "https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/",
   RULE_PROVIDER_URL_BASE: "https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo",
 
-  REGION_ORDER: ["HK", "TW", "SG", "JP", "KR", "AS", "US"],
+  REGION_ORDER: ["HK", "TW", "SG", "JP", "KR", "AS", "US", "CUSTOM"],
 
   URL_TEST_EXTRA: {
     hidden: true,
@@ -38,7 +41,7 @@ const SETTINGS = {
     interval: 900,
     tolerance: 100,
     lazy: true,
-    timeout: 1000,
+    timeout: 750,
     "max-failed-times": 1,
   },
 
@@ -46,11 +49,11 @@ const SETTINGS = {
     url: "https://www.g.cn/generate_204",
     interval: 900,
     lazy: true,
-    timeout: 1000,
+    timeout: 750,
     "max-failed-times": 1,
   },
 
-  INFO_FILTER: /tg|telegram|倒卖|到期|电报|订阅|发布|防止|返利|购买|官方|官网|工单|过期|规则|建议|客服|联系|流量|剩余|失联|网址|邮箱|续费|邀请|重置|梯子|群/i
+  INFO_FILTER: /tg|telegram|倒卖|到期|电报|订阅|发布|防止|返利|购买|官方|官网|工单|过期|规则|建议|客服|联系|流量|剩余|失联|网址|邮箱|续费|邀请|重置|梯子|群|永久免费/i
 };
 
 // ====================
@@ -92,11 +95,12 @@ const buildRegex = (arr = []) =>
 
 const buildRegions = () =>
   ([
-    { name: "HK", pattern: ["香港", "HK", "HKG", "HONGKONG", "HONG KONG"], icon: "Hong_Kong.png" },
+    { name: "HK", pattern: ["香港", "HK", "HKG", "HKT", "HONGKONG", "HONG KONG"], icon: "Hong_Kong.png" },
     { name: "TW", pattern: ["台湾", "台北", "新北", "TW", "TWN", "TAIWAN", "TAIPEI"], icon: "Taiwan.png" },
     { name: "SG", pattern: ["新加坡", "狮城", "SG", "SGP", "SINGAPORE"], icon: "Singapore.png" },
     { name: "JP", pattern: ["日本", "东京", "大阪", "JP", "JPN", "JAPAN", "TOKYO", "OSAKA"], icon: "Japan.png" },
     { name: "KR", pattern: ["韩国", "首尔", "KR", "KOR", "KOREA", "SEOUL"], icon: "Korea.png" },
+    { name: "CUSTOM", pattern: ["哄哄", "热气球"], icon: "Area.png" },
     {
       name: "AS",
       pattern: [
@@ -251,6 +255,12 @@ const STATIC_RULES = [
   "RULE-SET,custom_proxy,main",
 
   "RULE-SET,category-ads-all,REJECT",
+
+  // 自定义屏蔽
+  ...uniq(CUSTOM_BLOCK_DOMAINS).map((d) => `DOMAIN-SUFFIX,${d},REJECT`),
+
+  // Grok 访问 storage.googleapis.com 时强制拒绝
+  "AND,((PROCESS-NAME,grok.exe),(DOMAIN-SUFFIX,storage.googleapis.com)),REJECT",
 
   ...uniq(BYPASS_DOMAINS).map((d) => `DOMAIN-SUFFIX,${d},DIRECT`),
   ...uniq(FORCE_PROXY_DOMAINS).map((d) => `DOMAIN,${d},main`),
