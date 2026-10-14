@@ -48,7 +48,7 @@ https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/Script/sing-
 | [`JP.yaml`](https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/JP.yaml)         | `日本`                 | `JP`               |
 | [`NoJP.yaml`](https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/NoJP.yaml)     | `非日本`               | `非日本`           |
 
-规则首先匹配 `DOMAIN-SUFFIX,gov.cn,DIRECT`，覆盖 `gov.cn` 本域及任意层级子域，直接使用内置 `DIRECT` 出口。其他自定义规则按 `直连 -> 日本 -> 非日本 -> 代理` 的顺序匹配。启用地区自动选择时，所有地区组均默认进入各自的自动选择组；日本与非日本策略组即使没有匹配节点也会保留，并添加显式 `DIRECT` 候选和 `empty-fallback: DIRECT`，保持直连回退行为。仅设置 `empty-fallback` 仍会因 `proxies: []` 被 Mihomo 拒绝。
+规则首先匹配 `DOMAIN-SUFFIX,gov.cn,DIRECT`，覆盖 `gov.cn` 本域及任意层级子域，直接使用内置 `DIRECT` 出口。随后匹配本地私有名单 `local_private`，再按 `直连 -> 日本 -> 非日本 -> 代理` 的顺序匹配以上四个规则集。启用地区自动选择时，所有地区组均默认进入各自的自动选择组；日本与非日本策略组即使没有匹配节点也会保留，并添加显式 `DIRECT` 候选和 `empty-fallback: DIRECT`，保持直连回退行为。仅设置 `empty-fallback` 仍会因 `proxies: []` 被 Mihomo 拒绝。
 
 ## DNS 与 sniffer 定制
 
@@ -94,6 +94,50 @@ Mihomo v1.19.31 在 Windows 上的 `system` 会枚举已启用且有网关的网
 
 更新后请在客户端重新应用覆写并重载配置，重启浏览器后测试；必要时清理客户端 DNS/fake-ip 缓存及 Windows DNS 缓存（`ipconfig /flushdns`）。如果使用远程脚本地址，需要先将本地修改发布到仓库，再让客户端更新脚本；仅修改本地仓库不会改变客户端当前配置。
 
+## 本地私有域名名单
+
+仓库提供空白模板 [`CustomRules/local-private.empty.yaml`](CustomRules/local-private.empty.yaml)，内容始终为 `payload: []`。真实内部域名只填写在本机副本中，不写入这个公开模板，也不写入覆写脚本。回归测试会拒绝内容非空的公开模板。
+
+两份脚本均生成 `local_private` 规则集：
+
+```yaml
+local_private:
+  type: http
+  behavior: domain
+  format: yaml
+  interval: 0
+  url: https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/local-private.empty.yaml
+  path: ./ruleset/local-private.yaml
+```
+
+下载和本地读取由 Mihomo 内核执行，不需要初始化工具，也不依赖 JavaScript 文件读写。空模板必须与新脚本一起发布到仓库，并确认模板地址可以访问后再使用新脚本。仅在 Bettbox 下载脚本正文时不会创建名单；应用新配置、内核加载规则集时才会处理。
+
+- 首次加载时，若本地缓存不存在，内核下载空白模板并保存到本地。
+- 后续正常加载时，优先使用能够读取并成功解析的本地副本；`interval: 0` 关闭该规则集的定时更新。更新覆写脚本不会直接改写这个副本。
+- 本地名单中的域名统一使用 `DIRECT`、`system` DNS，并加入 fake-ip 例外和嗅探跳过列表。其规则集 DNS 策略放在 `rule-set:cn` 等通用规则集之前；`direct-nameserver-follow-policy` 保持开启。`system` 的适用边界与上面的 gov.cn 说明相同。
+
+本地名单的填写格式如下，示例域名均为虚构：
+
+```yaml
+payload:
+  - '+.intranet.example'
+  - 'portal.example'
+```
+
+`+.intranet.example` 匹配本域及其子域；`portal.example` 只匹配该域名。此文件使用 `behavior: domain`，只填写域名或域名模式，不填写 `DOMAIN-SUFFIX,` 前缀、网址协议或页面路径。没有内部域名时保持 `payload: []`。
+
+### 在 Bettbox 中维护
+
+Bettbox 会将 HTTP 规则集的路径改写为当前订阅目录下、根据 URL 计算的缓存文件名。因此 `./ruleset/local-private.yaml` 是脚本声明的路径，在 Bettbox 中应以 `local_private` 规则集的实际本地路径为准。相同订阅下，两份脚本使用相同模板 URL；不要随意更换 URL，改用另一份订阅也可能创建另一份本地副本。
+
+在 Bettbox 的规则资源中找到 `local_private`，使用其侧载/导入本地文件功能填入私有名单，或用本机编辑器修改该资源的实际缓存文件，然后重新应用配置。当前源码中的“查看内容”入口是只读的。若开启了客户端的 DNS 或嗅探覆盖，还需检查最终配置保留了 `rule-set:local_private` 的相应设置。
+
+**此方案保留正常更新流程中的本地副本，但不是文件防覆盖锁。** 手动刷新 `local_private`（包括某些客户端的“更新全部规则集”），或本地文件无法读取/解析时，HTTP provider 仍可能重新下载空模板并覆盖缓存。不要对该资源执行远程刷新；请在仓库外保留私有名单备份。首次下载需要网络，无法保证离线且本地缺失时无报错。如果要求“只要文件存在，任何情况下都禁止覆盖”，仍需要客户端提供原生保护，单靠此脚本做不到。
+
+仓库已忽略 `/private/`、`/ruleset/local-private.yaml` 和 `/rules/local-private.yaml`，用于防止在本仓库测试时误提交这些常见本地副本路径。Bettbox 的私有缓存和名单备份应保留在仓库外。本节功能仅接入两份生成脚本，独立 Docker 模板未同步改动。
+
+实现依据：Bettbox 源码中的 [`Fetcher.Initial/Update`](https://github.com/appshubcc/Bettbox/blob/111c5d91e5a32836650b56601b38713fadbbffa9/core/Clash.Meta/component/resource/fetcher.go)、[`patchProviderPaths`](https://github.com/appshubcc/Bettbox/blob/111c5d91e5a32836650b56601b38713fadbbffa9/core/patch.go) 和[资源查看/侧载入口](https://github.com/appshubcc/Bettbox/blob/111c5d91e5a32836650b56601b38713fadbbffa9/lib/views/proxies/providers.dart)。本地回归测试验证生成配置和空模板约束，不代替具体安装版本的内核及网络验收。
+
 ## 自动更新
 
 GitHub Actions 每天北京时间 09:17 分别检查：
@@ -117,6 +161,7 @@ node scripts/sync-upstream.mjs --check
 - `Script/mihomoScript.js`：基于 `AIsouler/MyClash` 的生成结果。
 - `Script/sing-mix.js`：基于 `Sakyvo/sing-mix` 的生成结果。
 - `CustomRules/*.yaml`：两个覆写脚本使用的自定义规则集。
+- `CustomRules/local-private.empty.yaml`：仅供首次下载的公开空模板，严禁填写真实内部域名。
 - `scripts/sync-upstream.mjs`：双上游下载与确定性定制生成器。
 - `.upstream/*.sha`：各生成结果对应的上游提交。
 - `Test/test-customized-script.mjs`：定制规则和地区组的零依赖测试。

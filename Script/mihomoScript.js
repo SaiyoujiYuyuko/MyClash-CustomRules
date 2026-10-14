@@ -1696,6 +1696,7 @@ function main(config) {
 
   newConfig.sniffer = buildCustomSniffer(config.sniffer);
   applyCustomDns(newConfig);
+  applyLocalPrivateRules(newConfig);
 
   return newConfig;
 }
@@ -1753,4 +1754,36 @@ function applyCustomDns(config) {
       '+.stun.*.*.*',
     ]),
   ];
+}
+
+function applyLocalPrivateRules(config) {
+  // 由内核读取本地缓存；首次缺失时下载公开空模板。0 仅关闭定时更新，不能阻止手动刷新。
+  config['rule-providers'] = {
+    ...config['rule-providers'],
+    local_private: {
+      type: 'http',
+      behavior: 'domain',
+      format: 'yaml',
+      interval: 0,
+      url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/local-private.empty.yaml',
+      path: './ruleset/local-private.yaml',
+    },
+  };
+
+  const governmentRule = 'DOMAIN-SUFFIX,gov.cn,DIRECT';
+  const localRule = 'RULE-SET,local_private,DIRECT';
+  config.rules = [
+    governmentRule,
+    localRule,
+    ...config.rules.filter((rule) => rule !== governmentRule && rule !== localRule),
+  ];
+
+  const dns = config.dns;
+  const policyKey = 'rule-set:local_private';
+  const otherPolicies = { ...dns['nameserver-policy'] };
+  delete otherPolicies[policyKey];
+  dns['nameserver-policy'] = { [policyKey]: ['system'], ...otherPolicies };
+  dns['direct-nameserver-follow-policy'] = true;
+  dns['fake-ip-filter'] = [...new Set([...(dns['fake-ip-filter'] || []), policyKey])];
+  config.sniffer['skip-domain'] = [...new Set([...(config.sniffer['skip-domain'] || []), policyKey])];
 }

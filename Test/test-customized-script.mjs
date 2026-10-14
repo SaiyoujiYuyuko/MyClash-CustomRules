@@ -103,6 +103,7 @@ assertCustomProviders(output, './ruleset');
 
 const expectedRules = [
   'DOMAIN-SUFFIX,gov.cn,DIRECT',
+  'RULE-SET,local_private,DIRECT',
   'RULE-SET,custom_direct,直连',
   'RULE-SET,custom_jp,日本',
   'RULE-SET,custom_nojp,非日本',
@@ -216,6 +217,7 @@ assertCustomProviders(singMixOutput, './rules');
 
 const expectedSingMixRules = [
   'DOMAIN-SUFFIX,gov.cn,DIRECT',
+  'RULE-SET,local_private,DIRECT',
   'RULE-SET,custom_direct,DIRECT',
   'RULE-SET,custom_jp,JP',
   'RULE-SET,custom_nojp,非日本',
@@ -333,6 +335,22 @@ for (const [label, runMain, proxyGroup] of [
 ]) {
   const makeInput = () => ({ proxies: [makeProxy('日本 DNS Test', 'node.private.example')] });
   const config = runMain(makeInput());
+  assert.deepEqual(normalize(config['rule-providers'].local_private), {
+    type: 'http',
+    behavior: 'domain',
+    format: 'yaml',
+    interval: 0,
+    url: 'https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/CustomRules/local-private.empty.yaml',
+    path: './ruleset/local-private.yaml',
+  }, `${label} 本地私有名单必须引用同一个空模板并关闭定时刷新`);
+  assert.deepEqual(normalize(config.dns['nameserver-policy']['rule-set:local_private']), ['system'], label);
+  const policyKeys = Object.keys(config.dns['nameserver-policy']);
+  assert.ok(
+    policyKeys.indexOf('rule-set:local_private') < policyKeys.indexOf('rule-set:cn'),
+    `${label} 私有名单的系统 DNS 策略应优先于通用国内规则集`,
+  );
+  assert.ok(config.dns['fake-ip-filter'].includes('rule-set:local_private'), label);
+  assert.ok(config.sniffer['skip-domain'].includes('rule-set:local_private'), label);
   assert.equal(config.dns['respect-rules'], true, label);
   assert.equal(config.dns['prefer-h3'], false, label);
   assert.equal(config.dns['use-hosts'], true, label);
@@ -402,10 +420,14 @@ for (const [label, runMain, proxyGroup] of [
   const conflictingDns = runMain({
     ...makeInput(),
     dns: {
-      'nameserver-policy': { '+.gov.cn': [`https://1.1.1.1/dns-query#${proxyGroup}`] },
+      'nameserver-policy': {
+        '+.gov.cn': [`https://1.1.1.1/dns-query#${proxyGroup}`],
+        'rule-set:local_private': [`https://1.1.1.1/dns-query#${proxyGroup}`],
+      },
+      'fake-ip-filter': ['rule-set:local_private'],
       'direct-nameserver-follow-policy': false,
     },
-    sniffer: { 'skip-domain': ['+.gov.cn', '+.internal.example'] },
+    sniffer: { 'skip-domain': ['+.gov.cn', '+.internal.example', 'rule-set:local_private'] },
   });
   assert.deepEqual(
     normalize(conflictingDns.dns['nameserver-policy']['+.gov.cn']),
@@ -413,14 +435,30 @@ for (const [label, runMain, proxyGroup] of [
     `${label} 输入的同名 gov.cn DNS 策略不能恢复公共 DNS 解析`,
   );
   assert.equal(conflictingDns.dns['direct-nameserver-follow-policy'], true, label);
+  assert.deepEqual(normalize(conflictingDns.dns['nameserver-policy']['rule-set:local_private']), ['system'], label);
+  for (const entries of [conflictingDns.dns['fake-ip-filter'], conflictingDns.sniffer['skip-domain']]) {
+    assert.equal(entries.filter((entry) => entry === 'rule-set:local_private').length, 1, label);
+  }
   assert.equal(conflictingDns.sniffer['skip-domain'].filter((domain) => domain === '+.gov.cn').length, 1, label);
   assert.ok(conflictingDns.sniffer['skip-domain'].includes('+.internal.example'), label);
   overridden.dns['fake-ip-filter'].push('isolated.example');
   overridden.sniffer['skip-domain'].push('isolated.example');
+  overridden['rule-providers'].local_private.interval = 86400;
   const next = runMain(makeInput());
   assert.ok(!next.dns['fake-ip-filter'].includes('isolated.example'), label);
   assert.ok(!next.sniffer['skip-domain'].includes('isolated.example'), label);
+  assert.equal(next['rule-providers'].local_private.interval, 0, `${label} 不共享上次调用的私有规则集对象`);
 }
+
+for (const runMain of [main, singMixMain]) {
+  const reprocessed = runMain(runMain({ proxies: [makeProxy('日本 Repeat', 'repeat.example')] }));
+  assert.equal(reprocessed.rules.filter((rule) => rule === 'RULE-SET,local_private,DIRECT').length, 1);
+  assert.equal(reprocessed.rules[1], 'RULE-SET,local_private,DIRECT');
+}
+
+// 公开模板必须一直为空，防止把本机填写的域名误当作初始化模板提交。
+const privateTemplate = await readFile(new URL('../CustomRules/local-private.empty.yaml', import.meta.url), 'utf8');
+assert.match(privateTemplate, /^payload: \[\]\r?\n$/, '公开的本地私有规则模板必须只含空 payload');
 
 const privateDnsOutput = main({
   proxies: [makeProxy('日本 Private DNS', 'node.private.example')],
@@ -450,4 +488,4 @@ assert.ok(singMixPrivateDns.dns['fake-ip-filter'].includes('+.internal.example')
 assert.equal(output.dns.ipv6, true, '保留 mihomo IPv6 默认值');
 assert.equal(singMixOutput.dns.ipv6, false, '保留 sing-mix IPv6 默认值');
 
-console.log('两个定制脚本测试通过（规则、地区组、DNS、sniffer）');
+console.log('两个定制脚本测试通过（规则、地区组、DNS、sniffer、本地私有名单配置与空模板）');
