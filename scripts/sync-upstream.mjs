@@ -285,6 +285,21 @@ export function customizeScript(upstreamSource) {
     'buildRegionGroups 非日本组',
   );
 
+  // 新版上游的极简模式省略地区组，但自定义日本/非日本规则仍需要这些目标。
+  const minimalRegionAnchor =
+    '  const generatedRegionGroups = ruleOptionsEnable.极简模式 ? [] : buildRegionGroups(filteredProxies, customProxies);';
+  if (source.includes(minimalRegionAnchor)) {
+    source = replaceOnce(
+      source,
+      minimalRegionAnchor,
+      '  const generatedRegionGroups = buildRegionGroups(filteredProxies, customProxies).filter(\n' +
+        '    (group) => !ruleOptionsEnable.极简模式 ||\n' +
+        "      ['日本', '日本-自动选择', '非日本', '非日本-自动选择'].includes(group.name),\n" +
+        '  );',
+      '极简模式保留自定义规则的地区目标',
+    );
+  }
+
   const defaultProxyBaseGroupsAnchor =
     '  const baseGroupNames = baseGroups.filter((g) => ruleOptionsEnable[g.name]).map((g) => g.name);\n';
   source = replaceOnce(
@@ -310,15 +325,11 @@ export function customizeScript(upstreamSource) {
 
   const fallbackGroupAnchor =
     "    name: '漏网之鱼',\n" +
-    "    proxies: ['默认代理', '直连', ...groupNamesOfSelect],\n" +
-    "    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Stack.png',\n";
+    "    proxies: ['默认代理', '直连', ...groupNamesOfSelect],\n";
   source = replaceOnce(
     source,
     fallbackGroupAnchor,
-    "    name: '漏网之鱼',\n" +
-      "    proxies: ['默认代理', '直连', ...groupNamesOfSelect],\n" +
-      "    'default-selected': '直连',\n" +
-      "    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Stack.png',\n",
+    fallbackGroupAnchor + "    'default-selected': '直连',\n",
     '漏网之鱼默认选择',
   );
 

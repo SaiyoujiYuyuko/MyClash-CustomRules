@@ -52,6 +52,8 @@ https://cdn.jsdelivr.net/gh/SaiyoujiYuyuko/MyClash-CustomRules@main/Script/sing-
 
 ## DNS 与 sniffer 定制
 
+若上游提供“极简模式”，mihomo 定制脚本在该模式下仍保留日本、非日本及其必要的自动选择组，保证上述固定规则始终有有效目标。
+
 生成器参考 `example.yaml` 的 DNS/sniffer 设置作了选择性补充，两份生成脚本均可独立使用；定时更新会自动重新应用这些设置，无需手工修改生成结果。示例文件仅用于对照，不参与生成，也不导入其中的订阅、节点、策略组或面板设置。
 
 | 配置               | 定制后的行为                                                                                          | 原因                                                                           |

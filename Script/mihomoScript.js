@@ -1624,7 +1624,10 @@ function main(config) {
 
   const { customProxies, customProxyNames, customGroup } = buildCustomizeGroups(filteredProxies);
 
-  const generatedRegionGroups = ruleOptionsEnable.极简模式 ? [] : buildRegionGroups(filteredProxies, customProxies);
+  const generatedRegionGroups = buildRegionGroups(filteredProxies, customProxies).filter(
+    (group) => !ruleOptionsEnable.极简模式 ||
+      ['日本', '日本-自动选择', '非日本', '非日本-自动选择'].includes(group.name),
+  );
 
   const { globalGroup, functionalGroups, functionalRules, finalRuleProviders, chainGroup, directGroup } =
     buildFunctionalGroups(filteredProxies, generatedRegionGroups, { customProxyNames, customGroup });

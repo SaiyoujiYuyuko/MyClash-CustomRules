@@ -123,7 +123,9 @@ assert.deepEqual(
   ['自动选择', '手动选择', '负载均衡'],
   '默认代理应优先提供自动选择、手动选择和负载均衡',
 );
-for (const regionName of ['香港', '日本', '美国', '新加坡', '台湾省', '非日本']) {
+const taiwanGroupName = ['台湾', '台湾省'].find((name) => groupByName(output, name));
+assert.ok(taiwanGroupName, '台湾节点应生成对应地区组');
+for (const regionName of ['香港', '日本', '美国', '新加坡', taiwanGroupName, '非日本']) {
   assert.ok(defaultProxyGroup.proxies.indexOf(regionName) >= 3, `默认代理的区域组 ${regionName} 应排在基础组之后`);
 }
 assert.equal(groupByName(output, '漏网之鱼')['default-selected'], '直连');
@@ -137,7 +139,7 @@ for (const [regionName, autoSelectName] of [
   ['日本', '日本-自动选择'],
   ['美国', '美国-自动选择'],
   ['新加坡', '新加坡-自动选择'],
-  ['台湾省', '台湾省-自动选择'],
+  [taiwanGroupName, `${taiwanGroupName}-自动选择`],
   ['非日本', '非日本-自动选择'],
 ]) {
   const regionGroup = groupByName(output, regionName);
@@ -194,6 +196,33 @@ try {
   assert.equal(groupByName(onlyNonJapanWithoutAuto, '日本')['empty-fallback'], 'DIRECT');
 } finally {
   ruleOptionsEnable.生成地区自动选择组 = generateRegionAutoSelect;
+}
+
+// 兼容新增极简模式的上游；固定的日本/非日本规则不能指向不存在或空的策略组。
+if (Object.hasOwn(ruleOptionsEnable, '极简模式')) {
+  const minimalMode = ruleOptionsEnable.极简模式;
+  try {
+    ruleOptionsEnable.极简模式 = true;
+    for (const autoSelect of [true, false]) {
+      ruleOptionsEnable.生成地区自动选择组 = autoSelect;
+      for (const region of ['日本', '美国']) {
+        const minimal = main({ proxies: [makeProxy(`${region} Minimal`, 'minimal.example')] });
+        for (const name of ['日本', '非日本']) {
+          assert.ok(groupByName(minimal, name)?.proxies.length, `极简模式必须保留有效的 ${name} 规则目标`);
+        }
+        const names = new Set(minimal['proxy-groups'].map((group) => group.name));
+        for (const rule of expectedRules) {
+          const target = rule.split(',')[2];
+          assert.ok(target === 'DIRECT' || names.has(target), `极简模式规则目标缺失：${rule}`);
+        }
+        assert.ok(minimal.dns['fake-ip-filter'].includes('rule-set:local_private'));
+        assert.deepEqual(normalize(minimal.dns['nameserver-policy']['rule-set:local_private']), ['system']);
+      }
+    }
+  } finally {
+    ruleOptionsEnable.极简模式 = minimalMode;
+    ruleOptionsEnable.生成地区自动选择组 = generateRegionAutoSelect;
+  }
 }
 
 assert.throws(() => customizeScript(mihomoSource), /已经包含自定义修改/);
