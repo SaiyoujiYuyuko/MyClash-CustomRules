@@ -69,6 +69,9 @@ const prefixRules = [
   'RULE-SET,custom_nojp,非日本',
   'RULE-SET,custom_proxy,默认代理',
 
+  // 规则集下载域名，避免出现鸡蛋问题
+  'DOMAIN,cdn.jsdmirror.com,直连',
+
   // 私有网络直连
   'RULE-SET,private,直连',
 
